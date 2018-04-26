@@ -68,15 +68,15 @@ namespace KLib
 		{
 		}
 
-		template<typename U, size_t __u_max_alloc_size=TraceAllocator::max_alloc_size>
+		template<typename U, size_t __u_max_alloc_size>
 		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const&):_allocator(__SingletonTraceAllocator::instance())
 		{
 
 		}
 
-		template<class U, size_t __u_max_alloc_size= TraceAllocator::max_alloc_size>
+		template<class U>
 		struct rebind {
-			typedef TraceAllocator<U, __u_max_alloc_size> other;
+			typedef TraceAllocator<U, TraceAllocator::max_alloc_size> other;
 		};
 
 
