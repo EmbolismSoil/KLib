@@ -6,10 +6,12 @@
 #include <boost/noncopyable.hpp>
 #include <boost/format.hpp>
 #include <new>
+#include <limits.h>
+#include <stdint.h>
 
 namespace KLib
 {
-	static const size_t __max_size_t_limit(std::numeric_limits<size_t>::max());
+	static const uint64_t __max_size_t_limit(0xffffffffffffffff);
 
 	class __SingletonTraceAllocator: boost::noncopyable
 	{
@@ -43,7 +45,7 @@ namespace KLib
 		virtual ~__SingletonTraceAllocator() {}
 	};
 
-	template<class T, size_t __max_alloc_size= __max_size_t_limit>
+	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
 	class TraceAllocator : public std::allocator<T>
 	{
 	public:
@@ -55,7 +57,7 @@ namespace KLib
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
 
-		static const size_t max_alloc_size;
+		static const uint64_t max_alloc_size;
 
 		inline TraceAllocator():_allocator(__SingletonTraceAllocator::instance())
 		{
@@ -68,7 +70,7 @@ namespace KLib
 		{
 		}
 
-		template<typename U, size_t __u_max_alloc_size>
+		template<typename U, uint64_t __u_max_alloc_size>
 		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const&):_allocator(__SingletonTraceAllocator::instance())
 		{
 
@@ -99,8 +101,8 @@ namespace KLib
 		__SingletonTraceAllocator& _allocator;
 	};
 
-	template<class T, size_t __max_alloc_size>
-	const size_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
+	template<class T, uint64_t __max_alloc_size>
+	const uint64_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
 }
 
 #endif
