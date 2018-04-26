@@ -55,7 +55,7 @@ namespace KLib
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
 
-		static size_t max_alloc_size = __max_alloc_size;
+		static const size_t max_alloc_size;
 
 		inline TraceAllocator():_allocator(__SingletonTraceAllocator::instance())
 		{
@@ -98,6 +98,9 @@ namespace KLib
 	private:
 		__SingletonTraceAllocator& _allocator;
 	};
+
+	template<class T, size_t __max_alloc_size>
+	static const size_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
 }
 
 #endif
