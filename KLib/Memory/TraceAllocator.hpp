@@ -30,7 +30,8 @@ namespace KLib
 				throw std::bad_alloc();
 			}
 
-			_capacity.fetch_add(cnt, boost::memory_order_release);
+			//_capacity.fetch_add(cnt, boost::memory_order_release);
+			_capacity += cnt;
 			return p;
 		}
 
@@ -39,7 +40,7 @@ namespace KLib
 			return _capacity.load(boost::memory_order_acquire);
 		}
 
-		__TraceAllocator() {}
+		__TraceAllocator() { _capacity = 0; }
 		virtual ~__TraceAllocator() {}
 
 	private:
