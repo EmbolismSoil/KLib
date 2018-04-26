@@ -3,7 +3,7 @@
 
 int main(void) 
 {
-	KLib::LRUCache<int, int> cache;
+	KLib::LRUCache<int, int, 100> cache;
 
 	for (int cnt = 0; cnt < 100; ++cnt) {
 		cache.put(cnt, cnt);
