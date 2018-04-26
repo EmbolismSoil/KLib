@@ -9,7 +9,7 @@
 
 namespace KLib
 {
-	static const __max_size_t_limit(std::numeric_limits<size_t>::max());
+	static const size_t __max_size_t_limit(std::numeric_limits<size_t>::max());
 
 	class __SingletonTraceAllocator: boost::noncopyable
 	{
@@ -76,7 +76,7 @@ namespace KLib
 
 		template<class U>
 		struct rebind {
-			typedef TraceAllocator<U, TraceAllocator::max_alloc_size> other;
+			typedef TraceAllocator<U, __max_alloc_size> other;
 		};
 
 
@@ -100,7 +100,7 @@ namespace KLib
 	};
 
 	template<class T, size_t __max_alloc_size>
-	static const size_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
+	const size_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
 }
 
 #endif
