@@ -91,7 +91,7 @@ namespace KLib
 			return _allocator.getCapacity();
 		}
 		
-		size_type const max_size() 
+		size_type const max_size() const
 		{
 			return max_alloc_size;
 		}
