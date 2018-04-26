@@ -13,7 +13,7 @@ namespace KLib
 {
 	static const uint64_t __max_size_t_limit(0xffffffffffffffff);
 
-	class __TraceAllocator
+	class __TraceAllocator: boost::noncopyable
 	{
 	public:
 		typedef size_t size_type;
@@ -34,8 +34,12 @@ namespace KLib
 			return _capacity.load();
 		}
 
-		__TraceAllocator() { _capacity.store(0, boost::memory_order_release); }
-
+		static __TraceAllocator& instance() 
+		{
+			static __TraceAllocator _instance;
+			return _instance;
+		}
+#if 0
 		__TraceAllocator(__TraceAllocator const& rhs) 
 		{
 			_capacity.store(rhs._capacity.load(boost::memory_order_acquire), boost::memory_order_release);
@@ -45,11 +49,12 @@ namespace KLib
 		{
 			_capacity.store(rhs._capacity.load(boost::memory_order_acquire), boost::memory_order_release);
 		}
-
+#endif
 		virtual ~__TraceAllocator() {}
 
 	private:
 		boost::atomic<size_type> _capacity;
+		__TraceAllocator() { _capacity.store(0, boost::memory_order_release); }
 	};
 
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
@@ -67,8 +72,10 @@ namespace KLib
 		typedef typename std::allocator<T>::difference_type difference_type;
 
 		static const uint64_t max_alloc_size;
+		static const uint64_t item_size;
 
-		inline TraceAllocator()
+		inline TraceAllocator():
+			_allocator(__TraceAllocator::instance())
 		{
 
 		}
@@ -111,11 +118,14 @@ namespace KLib
 		}
 
 	private:
-		__TraceAllocator _allocator;
+		__TraceAllocator& _allocator;
 	};
 
 	template<class T, uint64_t __max_alloc_size>
 	const uint64_t TraceAllocator<T, __max_alloc_size>::max_alloc_size(__max_alloc_size);
+
+	template<class T, uint64_t __max_alloc_size>
+	const uint64_t TraceAllocator<T, __max_alloc_size>::item_size(sizeof(T));
 }
 
 #endif
