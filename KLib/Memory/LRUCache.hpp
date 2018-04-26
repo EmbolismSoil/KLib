@@ -14,7 +14,7 @@
 
 namespace KLib
 {
-	template<class __KEY_TYPE, class __VALUE_TYPE>
+	template<class __KEY_TYPE, class __VALUE_TYPE, size_t max_alloc_size=std::numeric_limits<size_t>::max>
 	class LRUCache : boost::noncopyable {
 	public:
 		struct Node {
@@ -22,20 +22,12 @@ namespace KLib
 			__VALUE_TYPE v;
 			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
 		};
-		typedef std::list<Node, TraceAllocator<Node> > CacheList;
-		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator> > > KeyMap;
+		typedef std::list<Node, TraceAllocator<Node, max_alloc_size> > CacheList;
+		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator>, max_alloc_size > > KeyMap;
 
-		LRUCache(typename CacheList::size_type const capacity) : _capacity(capacity)
+		LRUCache()
 		{
 
-		}
-
-		LRUCache() :_capacity(10) {}
-
-		void setCapacity(size_t const size)
-		{
-			boost::lock_guard<boost::mutex> guard(_cap_mtx);
-			_capacity = size;
 		}
 
 		__VALUE_TYPE get(__KEY_TYPE const & key)
@@ -91,6 +83,7 @@ namespace KLib
 				}
 			}
 
+#if 0
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
 				if (_cacheList.size() >= _capacity) {
@@ -99,7 +92,7 @@ namespace KLib
 					_cacheList.pop_front();
 				}
 			}
-
+#endif
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx); 
 				_cacheList.push_front(Node(k, v));
@@ -131,10 +124,7 @@ namespace KLib
 	private:
 
 		CacheList _cacheList;
-		boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator> _keyMap;
-		
-		size_t _capacity;
-		boost::mutex _cap_mtx;
+		boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator> _keyMap;	
 
 		boost::atomic<size_t> _reqCnt;
 		boost::atomic<size_t> _cacheHitCnt;
