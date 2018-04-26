@@ -11,10 +11,16 @@
 
 namespace KLib
 {
+	template<class T, uint64_t>
+	class TraceAllocator;
+
 	static const uint64_t __max_size_t_limit(0xffffffffffffffff);
 
-	class __SingletonTraceAllocator: boost::noncopyable
+	class __TraceAllocator
 	{
+		template<class T, uint64_t>
+		friend class TraceAllocator;
+
 	public:
 		typedef size_t size_type;
 		inline void* allocate(size_type cnt)
@@ -33,16 +39,11 @@ namespace KLib
 			return _capacity.load(boost::memory_order_acquire);
 		}
 
-		static __SingletonTraceAllocator& instance()
-		{
-			static __SingletonTraceAllocator allocator;
-			return allocator;
-		}
+		__TraceAllocator() {}
+		virtual ~__TraceAllocator() {}
 
 	private:
 		boost::atomic<size_type> _capacity;
-		__SingletonTraceAllocator() {}
-		virtual ~__SingletonTraceAllocator() {}
 	};
 
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
@@ -59,19 +60,19 @@ namespace KLib
 
 		static const uint64_t max_alloc_size;
 
-		inline TraceAllocator():_allocator(__SingletonTraceAllocator::instance())
+		inline TraceAllocator()
 		{
 
 		}
 
 		inline ~TraceAllocator(){}
 
-		inline TraceAllocator(TraceAllocator const&): _allocator(__SingletonTraceAllocator::instance())
+		inline TraceAllocator(TraceAllocator const& oth)
 		{
 		}
 
 		template<typename U, uint64_t __u_max_alloc_size>
-		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const&):_allocator(__SingletonTraceAllocator::instance())
+		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const& oth)
 		{
 
 		}
@@ -97,8 +98,9 @@ namespace KLib
 		{
 			return __max_alloc_size;
 		}
+
 	private:
-		__SingletonTraceAllocator& _allocator;
+		__TraceAllocator _allocator;
 	};
 
 	template<class T, uint64_t __max_alloc_size>
