@@ -132,6 +132,4 @@ namespace KLib
 		boost::mutex _cacheMtx;
 	};
 }
-
-
 #endif // LRUCACHE_H
