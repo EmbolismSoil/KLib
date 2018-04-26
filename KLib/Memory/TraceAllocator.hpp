@@ -55,7 +55,7 @@ namespace KLib
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
 	class TraceAllocator : public std::allocator<T>
 	{
-		template<class T, uint64_t>
+		template<class OT, uint64_t>
 		friend class TraceAllocator;
 	public:
 		typedef typename std::allocator<T>::value_type value_type;
