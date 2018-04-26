@@ -11,7 +11,6 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
-#include "TraceAllocator.hpp"
 
 namespace KLib
 {
@@ -114,6 +113,11 @@ namespace KLib
 		size_t hitCnt() const
 		{
 			return _cacheHitCnt;
+		}
+
+		size_t const allocatedSize()
+		{
+			return _cacheList.get_allocator().allocatedSize();
 		}
 
 	private:
