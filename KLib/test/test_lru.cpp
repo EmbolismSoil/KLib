@@ -9,5 +9,6 @@ int main(void)
 		cache.put(cnt, cnt);
 	}
 
-	std::cout << cache.allocatedSize() << std::endl;
+	std::cout << "allocated size : " << cache.allocatedSize() << std::endl;
+	std::cout << "max alloc size : " << cache.maxAllocSize() << std::endl;
 }

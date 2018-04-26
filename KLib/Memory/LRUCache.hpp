@@ -121,6 +121,11 @@ namespace KLib
 			return _cacheList.get_allocator().allocatedSize();
 		}
 
+		size_t const maxAllocSize() 
+		{
+			return _cacheList.get_allocator().max_size();
+		}
+
 	private:
 
 		CacheList _cacheList;
