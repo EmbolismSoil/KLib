@@ -38,12 +38,12 @@ namespace KLib
 
 		__TraceAllocator(__TraceAllocator const& rhs) 
 		{
-			rhs._capacity.store(_capacity.load(boost::memory_order_acquire), boost::memory_order_release);
+			_capacity.store(rhs._capacity.load(boost::memory_order_acquire), boost::memory_order_release);
 		}
 
 		__TraceAllocator &operator=(__TraceAllocator const& rhs) 
 		{
-			rhs._capacity.store(_capacity.load(boost::memory_order_acquire), boost::memory_order_release);
+			_capacity.store(rhs._capacity.load(boost::memory_order_acquire), boost::memory_order_release);
 		}
 
 		virtual ~__TraceAllocator() {}
