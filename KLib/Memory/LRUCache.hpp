@@ -18,6 +18,8 @@
 #include <stack>
 #include <deque>
 #include <queue>
+#include <algorithm>
+#include <iterator>
 #include <string>
 
 #define __DECL_IS_CONTAINER(_container) \
@@ -29,17 +31,32 @@ struct is_container<_container<T, Alloc> > \
 template<class T, class Alloc>\
 const bool is_container<_container<T, Alloc> >::value(true)
 
+#define __DECL_MAP_IS_CONTAINER(_map) \
+template<class KT, class VT, class Alloc> \
+struct is_container<_map<KT, VT, Alloc> > \
+{\
+	static const bool value;\
+};\
+template<class KT, class VT, class Alloc>\
+const bool is_container<_map<KT, VT, Alloc> >::value(true);\
 
 #define __DECL_CACHE_TYPE(_container) \
 template<class T, class Alloc> \
 struct cache_type<_container<T, Alloc> > \
 {\
-	typedef _container<cache_type<T>::type, TraceAllocator<T> > type;\
+	typedef _container<typename cache_type<T>::type, TraceAllocator<typename cache_type<T>::type> > type;\
+}
+
+#define __DECL_MAP_CACHE_TYPE(_map)\
+template<class KT, class VT, class Alloc>\
+struct cache_type<_map<KT, VT, Alloc> >\
+{\
+	typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, \
+		TraceAllocator<std::pair<typename cache_type<KT>::type, typename cache_type<VT>::type> > > type;\
 }
 
 namespace KLib
 {
-	typedef enum { CONTAINER = 0, NOT_CONTAINER }E_IS_CONTAINER;
 	typedef std::basic_string<char, std::char_traits<char>, TraceAllocator<char> > cache_string;
 
 	template<class T>
@@ -48,12 +65,22 @@ namespace KLib
 		static const bool value;
 	};
 
+	template<class T>
+	const bool is_container<T>::value(false);
+
+	template<> 
+	struct is_container<std::string> 
+	{
+		static const bool value;
+	};
+	
+	const bool is_container<std::string>::value(true);
+
 	__DECL_IS_CONTAINER(std::vector);
 	__DECL_IS_CONTAINER(std::list);
-	__DECL_IS_CONTAINER(std::deque);
-	__DECL_IS_CONTAINER(std::map);
+	__DECL_MAP_IS_CONTAINER(std::map);
 	__DECL_IS_CONTAINER(std::set);
-	__DECL_IS_CONTAINER(std::multimap);
+	__DECL_MAP_IS_CONTAINER(std::multimap);
 	__DECL_IS_CONTAINER(std::multiset);
 	__DECL_IS_CONTAINER(std::stack);
 	__DECL_IS_CONTAINER(std::deque);
@@ -71,34 +98,97 @@ namespace KLib
 		typedef cache_string type;
 	};
 
+	#if 1
 	__DECL_CACHE_TYPE(std::vector);
 	__DECL_CACHE_TYPE(std::list);
-	__DECL_CACHE_TYPE(std::deque);
-	__DECL_CACHE_TYPE(std::map);
+	__DECL_MAP_CACHE_TYPE(std::map);
 	__DECL_CACHE_TYPE(std::set);
-	__DECL_CACHE_TYPE(std::multimap);
+	__DECL_MAP_CACHE_TYPE(std::multimap);
 	__DECL_CACHE_TYPE(std::multiset);
 	__DECL_CACHE_TYPE(std::stack);
 	__DECL_CACHE_TYPE(std::deque);
 	__DECL_CACHE_TYPE(std::priority_queue);
+	#endif
+
+	template<class T>
+	struct cache_type_converter
+	{
+		static typename cache_type<T>::type from(T const& raw)
+		{
+			return raw;
+		}
+	};
+
+	template<>
+	struct cache_type_converter<std::string>
+	{
+		static typename cache_type<std::string>::type from(const std::string &raw)
+		{
+			return typename cache_type<std::string>::type(raw.begin(), raw.end());
+		}
+	};
+
+	template<class T, class Alloc>
+	struct cache_type_converter<std::vector<T, Alloc> >
+	{
+		static typename cache_type<std::vector<T, Alloc> >::type from(std::vector<T, Alloc> const& raw)
+		{
+			typename cache_type<std::vector<T, Alloc> >::type cache_obj;
+			if (raw.empty())
+			{
+				return cache_obj;
+			}
+			std::transform(raw.begin(), raw.end(), std::back_inserter(cache_obj), 
+							&cache_type_converter<T>::from);
+		} 
+	};
+
+	template<class T>
+	typename cache_type<T>::type fromRaw(T const& raw)
+	{
+		return cache_type_converter<T>::from(raw);
+	}
+
+	template<class VT, bool VT_is_container>
+	struct __LRUCacheNode;
 
 	template<class VT>
-	struct __LRUCacheNode {
+	struct __LRUCacheNode<VT, false> 
+	{
 		cache_string k;
-		cache_type<VT>::type v;
-		Node(std::string const& _k, VT const& _v) : k(_k.begin(), _k.end()), v(_v) {}
-		Node(cache_string const& _k, VT const& _v) : k(_k), v(_v) {}
+		typename cache_type<VT>::type v;
+		__LRUCacheNode(std::string const& _k, VT const& _v) : k(_k.begin(), _k.end()), v(_v) {}
+		__LRUCacheNode(cache_string const& _k, VT const& _v) : k(_k), v(_v) {}
+	};
+
+	template<class VT>
+	struct __LRUCacheNode<VT, true>
+	{
+		cache_string k;
+		typename cache_type<VT>::type v;
+		__LRUCacheNode(std::string const& _k, VT const& _v): 
+			k(_k.begin(), _k.end()), 
+			v(fromRaw(_v))
+		{
+
+		}
+
+		__LRUCacheNode(cache_string const& _k, typename cache_type<VT>::type const& _v):k(_k),v(_v){}
+
 	};
 	
-	template<class __KEY_TYPE, class __VALUE_TYPE, size_t max_alloc_size=KLib::__max_size_t_limit>
+	template<class __VALUE_TYPE, size_t max_alloc_size=KLib::__max_size_t_limit>
 	class LRUCache : boost::noncopyable {
 	public:
+		typedef cache_string __KEY_TYPE;
+		typedef __LRUCacheNode<__VALUE_TYPE, is_container<__VALUE_TYPE>::value> Node;
+#if 0		
 		struct Node {
 			__KEY_TYPE k;
 			__VALUE_TYPE v;
 			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
 		};
-
+#endif
 		typedef std::list<Node, TraceAllocator<Node, max_alloc_size> > CacheList;
 		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator>, max_alloc_size > > KeyMap;
 
@@ -112,7 +202,7 @@ namespace KLib
 			++_reqCnt;
             size_t max = 1000;
             size_t zero = 0;
-
+#if 1
 			if (_reqCnt.compare_exchange_strong(max, zero)) {
 				//do sample
 				if (_samples.size() >= 360) {
@@ -127,7 +217,7 @@ namespace KLib
 				int hitRate = int((sum / double(_samples.size())) * 100);
 				_hitRage.store(hitRate, boost::memory_order_release);
 			}
-
+#endif
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
 				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
@@ -145,17 +235,23 @@ namespace KLib
 			throw std::range_error("not hit");
 		}
 
-		void put(__KEY_TYPE const& k, __VALUE_TYPE const& v)
+		void put(std::string const& k, __VALUE_TYPE const& v)
+		{
+			Node node(k, v);
+			put(node);
+		}
+
+		void put(Node const& node)
 		{
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
 
 				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
-				if ((pos = _keyMap.find(k)) != _keyMap.end()) {
+				if ((pos = _keyMap.find(node.k)) != _keyMap.end()) {
 					typename CacheList::iterator vit = pos->second;
-					vit->v = v; //update
+					vit->v = node.v; //update
 					_cacheList.splice(_cacheList.begin(), _cacheList, vit);
-					_keyMap[k] = _cacheList.begin();
+					_keyMap[node.k] = _cacheList.begin();
 					return;
 				}
 			}
@@ -172,8 +268,8 @@ namespace KLib
 #endif
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx); 
-				_cacheList.push_front(Node(k, v));
-				_keyMap[k] = _cacheList.begin();
+				_cacheList.push_front(node);
+				_keyMap[node.k] = _cacheList.begin();
 			}
 
 		}

@@ -7,21 +7,27 @@
 
 int main(void) 
 {
-        typedef std::basic_string<char, std::char_traits<char>, KLib::TraceAllocator<char> > cache_string;
-	KLib::LRUCache<int, cache_string, 100> cache;
+	KLib::LRUCache<std::string, 100> cache;
         
 	for (int cnt = 0; cnt < 100; ++cnt) {
-                cache_string s(cnt, 'c');
-		cache.put(cnt, s);
+		std::stringstream ss;
+		ss << cnt;
+		std::string k(ss.str());
+                std::string s(cnt, 'c');
+		cache.put(k, s);
 	}
 
 	std::cout << "LRUCache allocated size : " << cache.allocatedSize() << std::endl;
-	std::cout << "LRUCache max alloc size : " << cache.maxAllocSize() << std::endl;
 
-	std::vector<int, KLib::TraceAllocator<int, 100> > vec;
+	KLib::LRUCache<std::vector<int>, 100> vcache;
+        
 	for (int cnt = 0; cnt < 100; ++cnt) {
-		vec.push_back(cnt);
+		std::stringstream ss;
+		ss << cnt;
+		std::string k(ss.str());
+		std::vector<int> v;
+		v.push_back(cnt);
+		vcache.put(k, v);
 	}
-
-        std::cout << "vector allocated size : " << vec.get_allocator().allocatedSize() << std::endl;
+	std::cout << "LRUCache allocated size : " << cache.allocatedSize() << std::endl;	
 }

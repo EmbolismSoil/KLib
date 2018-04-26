@@ -25,7 +25,6 @@ namespace KLib
 				throw std::bad_alloc();
 			}
 
-			//_capacity.fetch_add(cnt, boost::memory_order_release);
 			_capacity.fetch_add(cnt, boost::memory_order_release);
 			return p;
 		}
@@ -35,9 +34,9 @@ namespace KLib
 			return _capacity.load(boost::memory_order_acquire);
 		}
 
-		static __TraceAllocator& instance() 
+		static __SingletonTraceAllocator& instance() 
 		{
-			static __TraceAllocator _instance;
+			static __SingletonTraceAllocator _instance;
 			return _instance;
 		}
 #if 0
@@ -55,7 +54,10 @@ namespace KLib
 
 	private:
 		boost::atomic<size_type> _capacity;
-		__SingletonTraceAllocator() { _capacity.store(0, boost::memory_order_release); }
+		__SingletonTraceAllocator() 
+		{ 
+			_capacity.store(0, boost::memory_order_release); 		
+		}
 	};
 
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
@@ -71,13 +73,13 @@ namespace KLib
 		typedef typename std::allocator<T>::const_reference const_reference;
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
-                typedef char char_type;
+        typedef char char_type;
 
 		static const uint64_t max_alloc_size;
 		static const uint64_t item_size;
 
 		inline TraceAllocator():
-			_allocator(__TraceAllocator::instance())
+			_allocator(__SingletonTraceAllocator::instance())
 		{
 
 		}
@@ -85,14 +87,14 @@ namespace KLib
 		inline ~TraceAllocator(){}
 
 		inline TraceAllocator(TraceAllocator const& oth):
-			_allocator(oth._allocator)
+			_allocator(__SingletonTraceAllocator::instance())
 		{
 			
 		}
 
 		template<typename U, uint64_t __u_max_alloc_size>
 		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const& oth):
-			_allocator(oth._allocator)
+			_allocator(__SingletonTraceAllocator::instance())
 		{
 
 		}
@@ -105,10 +107,11 @@ namespace KLib
 
 		inline pointer allocate(size_type cnt)
 		{
-                        std::cout << "allocate " << cnt << " items, size = " << cnt*sizeof(T) << std::endl;
 			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt*sizeof(T)));
 			return np;
 		}
+
+
 
 		inline size_type const allocatedSize() const
 		{
