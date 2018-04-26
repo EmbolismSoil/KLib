@@ -37,7 +37,7 @@ namespace KLib
 
 		size_type const getCapacity()
 		{
-			return _capacity.load(boost::memory_order_acquire);
+			return _capacity.load();
 		}
 
 		__TraceAllocator() { _capacity = 0; }
