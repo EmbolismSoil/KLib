@@ -95,7 +95,7 @@ namespace KLib
 		
 		size_type const max_size() const
 		{
-			return max_alloc_size;
+			return __max_alloc_size;
 		}
 	private:
 		__SingletonTraceAllocator& _allocator;
