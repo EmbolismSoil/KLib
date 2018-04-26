@@ -41,7 +41,7 @@ namespace KLib
 		virtual ~__SingletonTraceAllocator() {}
 	};
 
-	template<class T>
+	template<class T, size_t max_alloc_size=std::numeric_limits<size_t>::max>
 	class TraceAllocator : public std::allocator<T>
 	{
 	public:
@@ -85,7 +85,11 @@ namespace KLib
 		{
 			return _allocator.getCapacity();
 		}
-	
+		
+		size_type const max_size() 
+		{
+			return max_alloc_size;
+		}
 	private:
 		__SingletonTraceAllocator& _allocator;
 	};
