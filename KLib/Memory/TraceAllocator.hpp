@@ -1,3 +1,6 @@
+#ifndef __TRACEALLOCATOR_HPP__
+#define __TRACEALLOCATOR_HPP__
+
 #include <memory>
 #include <boost/atomic.hpp>
 #include <boost/noncopyable.hpp>
@@ -96,3 +99,5 @@ namespace KLib
 	};
 
 }
+
+#endif
