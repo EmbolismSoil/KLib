@@ -41,7 +41,7 @@ namespace KLib
 		virtual ~__SingletonTraceAllocator() {}
 	};
 
-	template<class T, size_t max_alloc_size=std::numeric_limits<size_t>::max>
+	template<class T, size_t __max_alloc_size=std::numeric_limits<size_t>::max>
 	class TraceAllocator : public std::allocator<T>
 	{
 	public:
@@ -52,6 +52,8 @@ namespace KLib
 		typedef typename std::allocator<T>::const_reference const_reference;
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
+
+		static size_t max_alloc_size = __max_alloc_size;
 
 		inline TraceAllocator():_allocator(__SingletonTraceAllocator::instance())
 		{
@@ -64,14 +66,15 @@ namespace KLib
 		{
 		}
 
-		template<typename U>
-		inline TraceAllocator(TraceAllocator<U> const&):_allocator(__SingletonTraceAllocator::instance())
+		template<typename U, size_t __u_max_alloc_size=TraceAllocator::max_alloc_size>
+		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const&):_allocator(__SingletonTraceAllocator::instance())
 		{
+
 		}
 
-		template<class U>
+		template<class U, size_t __u_max_alloc_size= TraceAllocator::max_alloc_size>
 		struct rebind {
-			typedef TraceAllocator<U> other;
+			typedef TraceAllocator<U, __u_max_alloc_size> other;
 		};
 
 
