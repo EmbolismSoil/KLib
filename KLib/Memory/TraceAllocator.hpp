@@ -60,16 +60,15 @@ namespace KLib
 
 		inline ~TraceAllocator(){}
 
-		inline explicit TraceAllocator(TraceAllocator const&oth): _allocator(oth._allocator)
+		inline explicit TraceAllocator(TraceAllocator const&oth):
 		{
-
+			_allocator = __SingletonTraceAllocator::instance();
 		}
 
 		template<typename U>
-		inline explicit TraceAllocator(TraceAllocator<U> const&oth):
-			_allocator(oth._allocator)
+		inline explicit TraceAllocator(TraceAllocator<U> const&oth)
 		{
-		
+			_allocator = __SingletonTraceAllocator::instance();
 		}
 
 		template<class U>
