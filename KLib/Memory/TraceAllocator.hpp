@@ -14,7 +14,7 @@ namespace KLib
 {
 	static const uint64_t __max_size_t_limit(0xffffffffffffffff);
 
-	class __TraceAllocator: boost::noncopyable
+	class __SingletonTraceAllocator: boost::noncopyable
 	{
 	public:
 		typedef size_t size_type;
@@ -51,11 +51,11 @@ namespace KLib
 			_capacity.store(rhs._capacity.load(boost::memory_order_acquire), boost::memory_order_release);
 		}
 #endif
-		virtual ~__TraceAllocator() {}
+		virtual ~__SingletonTraceAllocator() {}
 
 	private:
 		boost::atomic<size_type> _capacity;
-		__TraceAllocator() { _capacity.store(0, boost::memory_order_release); }
+		__SingletonTraceAllocator() { _capacity.store(0, boost::memory_order_release); }
 	};
 
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
@@ -121,7 +121,7 @@ namespace KLib
 		}
 
 	private:
-		__TraceAllocator& _allocator;
+		__SingletonTraceAllocator & _allocator;
 	};
 
 	template<class T, uint64_t __max_alloc_size>
