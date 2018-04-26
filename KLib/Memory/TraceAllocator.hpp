@@ -96,7 +96,7 @@ namespace KLib
 
 		inline pointer allocate(size_type cnt)
 		{
-			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
+			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt*sizeof(T)));
 			return np;
 		}
 
