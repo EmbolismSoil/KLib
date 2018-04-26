@@ -11,13 +11,17 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include "TraceAllocator.hpp"
 
 namespace KLib
 {
 	template<class __KEY_TYPE, class __VALUE_TYPE>
 	class LRUCache : boost::noncopyable {
 	public:
-		LRUCache(typename std::list<__VALUE_TYPE>::size_type const capacity) : _capacity(capacity)
+		typedef std::list<Node, TraceAllocator<__VALUE_TYPE> > CacheList;
+		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator> > > KeyMap;
+
+		LRUCache(typename CacheList::size_type const capacity) : _capacity(capacity)
 		{
 
 		}
@@ -50,10 +54,11 @@ namespace KLib
 
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
-				typename boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator>::iterator pos;
+				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
+
 				if ((pos = _keyMap.find(key)) != _keyMap.end()) { //hit
 					_cacheHitCnt.add(1, boost::memory_order_release);
-					typename std::list<Node>::iterator vit = pos->second;
+					typename CacheList::iterator vit = pos->second;
 					_cacheList.splice(_cacheList.begin(), _cacheList, vit);
 					_keyMap[key] = _cacheList.begin();
 					return vit->v;
@@ -69,9 +74,9 @@ namespace KLib
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
 
-				typename boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator>::iterator pos;
+				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
 				if ((pos = _keyMap.find(k)) != _keyMap.end()) {
-					typename std::list<Node>::iterator vit = pos->second;
+					typename CacheList::iterator vit = pos->second;
 					vit->v = v; //update
 					_cacheList.splice(_cacheList.begin(), _cacheList, vit);
 					_keyMap[k] = _cacheList.begin();
@@ -118,7 +123,7 @@ namespace KLib
 			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
 		};
 
-		std::list<Node> _cacheList;
+		CacheList _cacheList;
 		boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator> _keyMap;
 		
 		size_t _capacity;
