@@ -11,16 +11,10 @@
 
 namespace KLib
 {
-	template<class T, uint64_t>
-	class TraceAllocator;
-
 	static const uint64_t __max_size_t_limit(0xffffffffffffffff);
 
 	class __TraceAllocator
 	{
-		template<class T, uint64_t>
-		friend class TraceAllocator;
-
 	public:
 		typedef size_t size_type;
 		inline void* allocate(size_type cnt)
@@ -31,7 +25,7 @@ namespace KLib
 			}
 
 			//_capacity.fetch_add(cnt, boost::memory_order_release);
-			_capacity += cnt;
+			_capacity.fetch_add(cnt, boost::memory_order_release);
 			return p;
 		}
 
@@ -40,7 +34,18 @@ namespace KLib
 			return _capacity.load();
 		}
 
-		__TraceAllocator() { _capacity = 0; }
+		__TraceAllocator() { _capacity.store(0, boost::memory_order_release); }
+
+		__TraceAllocator(__TraceAllocator const& rhs) 
+		{
+			rhs._capacity.store(_capacity.load(boost::memory_order_acquire), boost::memory_order_release);
+		}
+
+		__TraceAllocator &operator=(__TraceAllocator const& rhs) 
+		{
+			rhs._capacity.store(_capacity.load(boost::memory_order_acquire), boost::memory_order_release);
+		}
+
 		virtual ~__TraceAllocator() {}
 
 	private:
@@ -50,6 +55,8 @@ namespace KLib
 	template<class T, uint64_t __max_alloc_size= __max_size_t_limit>
 	class TraceAllocator : public std::allocator<T>
 	{
+		template<class T, uint64_t>
+		friend class TraceAllocator;
 	public:
 		typedef typename std::allocator<T>::value_type value_type;
 		typedef typename std::allocator<T>::pointer pointer;
@@ -68,12 +75,15 @@ namespace KLib
 
 		inline ~TraceAllocator(){}
 
-		inline TraceAllocator(TraceAllocator const& oth)
+		inline TraceAllocator(TraceAllocator const& oth):
+			_allocator(oth._allocator)
 		{
+			
 		}
 
 		template<typename U, uint64_t __u_max_alloc_size>
-		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const& oth)
+		inline TraceAllocator(TraceAllocator<U, __u_max_alloc_size> const& oth):
+			_allocator(oth._allocator)
 		{
 
 		}
