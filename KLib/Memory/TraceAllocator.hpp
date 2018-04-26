@@ -8,6 +8,7 @@
 #include <new>
 #include <limits.h>
 #include <stdint.h>
+#include <iostream>
 
 namespace KLib
 {
@@ -70,6 +71,7 @@ namespace KLib
 		typedef typename std::allocator<T>::const_reference const_reference;
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
+                typedef char char_type;
 
 		static const uint64_t max_alloc_size;
 		static const uint64_t item_size;
@@ -103,11 +105,12 @@ namespace KLib
 
 		inline pointer allocate(size_type cnt)
 		{
+                        std::cout << "allocate " << cnt << " items, size = " << cnt*sizeof(T) << std::endl;
 			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt*sizeof(T)));
 			return np;
 		}
 
-		inline size_type const allocatedSize()
+		inline size_type const allocatedSize() const
 		{
 			return _allocator.getCapacity();
 		}
