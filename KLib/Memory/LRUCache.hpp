@@ -17,7 +17,12 @@ namespace KLib
 	template<class __KEY_TYPE, class __VALUE_TYPE>
 	class LRUCache : boost::noncopyable {
 	public:
-		typedef std::list<Node, TraceAllocator<__VALUE_TYPE> > CacheList;
+		struct Node {
+			__KEY_TYPE k;
+			__VALUE_TYPE v;
+			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
+		};
+		typedef std::list<Node, TraceAllocator<Node> > CacheList;
 		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator> > > KeyMap;
 
 		LRUCache(typename CacheList::size_type const capacity) : _capacity(capacity)
@@ -36,7 +41,10 @@ namespace KLib
 		__VALUE_TYPE get(__KEY_TYPE const & key)
 		{
 			++_reqCnt;
-			if (_reqCnt.compare_exchange_strong(1000, 0)) {
+                        size_t max = 1000;
+                        size_t zero = 0;
+
+			if (_reqCnt.compare_exchange_strong(max, zero)) {
 				//do sample
 				if (_samples.size() >= 360) {
 					_samples.pop_back();
@@ -56,7 +64,7 @@ namespace KLib
 				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
 
 				if ((pos = _keyMap.find(key)) != _keyMap.end()) { //hit
-					_cacheHitCnt.add(1, boost::memory_order_release);
+					_cacheHitCnt.fetch_add(1, boost::memory_order_release);
 					typename CacheList::iterator vit = pos->second;
 					_cacheList.splice(_cacheList.begin(), _cacheList, vit);
 					_keyMap[key] = _cacheList.begin();
@@ -121,11 +129,6 @@ namespace KLib
 		}
 
 	private:
-		struct Node {
-			__KEY_TYPE k;
-			__VALUE_TYPE v;
-			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
-		};
 
 		CacheList _cacheList;
 		boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator> _keyMap;
@@ -135,7 +138,7 @@ namespace KLib
 
 		boost::atomic<size_t> _reqCnt;
 		boost::atomic<size_t> _cacheHitCnt;
-		boost::atomic<::time_t> _reqCntStartTime;
+		boost::atomic<time_t> _reqCntStartTime;
 		boost::atomic<int> _hitRage;
 		std::list<double> _samples;
 		boost::mutex _cacheMtx;

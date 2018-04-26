@@ -9,63 +9,6 @@
 
 namespace KLib
 {
-	template<class T>
-	class TraceAllocator : public std::allocator<T>
-	{
-	public:
-		typedef typename std::allocator<T>::value_type value_type;
-		typedef typename std::allocator<T>::pointer pointer;
-		typedef typename std::allocator<T>::const_pointer const_pointer;
-		typedef typename std::allocator<T>::reference reference;
-		typedef typename std::allocator<T>::const_reference const_reference;
-		typedef typename std::allocator<T>::size_type size_type;
-		typedef typename std::allocator<T>::difference_type difference_type;
-
-		inline explicit TraceAllocator()
-		{
-			__allocator = __SingletonTraceAllocator.instance();
-		}
-
-		inline ~TraceAllocator(){}
-
-		inline explicit TraceAllocator(TraceAllocator const&oth): _allocator(oth._allocator)
-		{
-
-		}
-
-		template<typename U>
-		inline explicit TraceAllocator(TraceAllocator<U> const&oth):
-			_allocator(oth._allocator)
-		{
-		
-		}
-
-		template<class T>
-		struct rebind {
-			typedef TraceAllocator<T> other;
-		};
-
-		inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer p = 0)
-		{
-			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
-			return np;
-		}
-
-		inline pointer allocate(size_type cnt)
-		{
-			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
-			return p;
-		}
-
-		inline size_type const allocatedSize()
-		{
-			return _allocator.getCapacity();
-		}
-	
-	private:
-		__SingletonTraceAllocator& _allocator;
-	};
-
 	class __SingletonTraceAllocator: boost::noncopyable
 	{
 	public:
@@ -77,7 +20,7 @@ namespace KLib
 				throw std::bad_alloc();
 			}
 
-			_capacity.add(cnt, boost::memory_order_release);
+			_capacity.fetch_add(cnt, boost::memory_order_release);
 			return p;
 		}
 
@@ -98,6 +41,62 @@ namespace KLib
 		virtual ~__SingletonTraceAllocator() {}
 	};
 
+	template<class T>
+	class TraceAllocator : public std::allocator<T>
+	{
+	public:
+		typedef typename std::allocator<T>::value_type value_type;
+		typedef typename std::allocator<T>::pointer pointer;
+		typedef typename std::allocator<T>::const_pointer const_pointer;
+		typedef typename std::allocator<T>::reference reference;
+		typedef typename std::allocator<T>::const_reference const_reference;
+		typedef typename std::allocator<T>::size_type size_type;
+		typedef typename std::allocator<T>::difference_type difference_type;
+
+		inline explicit TraceAllocator()
+		{
+			_allocator = __SingletonTraceAllocator::instance();
+		}
+
+		inline ~TraceAllocator(){}
+
+		inline explicit TraceAllocator(TraceAllocator const&oth): _allocator(oth._allocator)
+		{
+
+		}
+
+		template<typename U>
+		inline explicit TraceAllocator(TraceAllocator<U> const&oth):
+			_allocator(oth._allocator)
+		{
+		
+		}
+
+		template<class U>
+		struct rebind {
+			typedef TraceAllocator<U> other;
+		};
+
+		inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer p = 0)
+		{
+			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
+			return np;
+		}
+
+		inline pointer allocate(size_type cnt)
+		{
+			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
+			return np;
+		}
+
+		inline size_type const allocatedSize()
+		{
+			return _allocator.getCapacity();
+		}
+	
+	private:
+		__SingletonTraceAllocator& _allocator;
+	};
 }
 
 #endif
