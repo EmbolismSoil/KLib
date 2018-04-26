@@ -53,22 +53,20 @@ namespace KLib
 		typedef typename std::allocator<T>::size_type size_type;
 		typedef typename std::allocator<T>::difference_type difference_type;
 
-		inline explicit TraceAllocator()
+		inline TraceAllocator():_allocator(__SingletonTraceAllocator::instance())
 		{
-			_allocator = __SingletonTraceAllocator::instance();
+
 		}
 
 		inline ~TraceAllocator(){}
 
-		inline explicit TraceAllocator(TraceAllocator const&oth):
+		inline TraceAllocator(TraceAllocator const&): _allocator(__SingletonTraceAllocator::instance())
 		{
-			_allocator = __SingletonTraceAllocator::instance();
 		}
 
 		template<typename U>
-		inline explicit TraceAllocator(TraceAllocator<U> const&oth)
+		inline TraceAllocator(TraceAllocator<U> const&):_allocator(__SingletonTraceAllocator::instance())
 		{
-			_allocator = __SingletonTraceAllocator::instance();
 		}
 
 		template<class U>
@@ -76,11 +74,6 @@ namespace KLib
 			typedef TraceAllocator<U> other;
 		};
 
-		inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer p = 0)
-		{
-			pointer np = reinterpret_cast<pointer>(_allocator.allocate(cnt));
-			return np;
-		}
 
 		inline pointer allocate(size_type cnt)
 		{

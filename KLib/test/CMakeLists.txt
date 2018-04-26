@@ -1,5 +1,6 @@
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.5)
 
-SET (INC_PATH . ${PROJECT_SOURCE_DIR})
+SET (INC_PATH . ${PROJECT_SOURCE_DIR}/KLib)
 include_directories(${INC_PATH})
 add_executable(test_lru test_lru.cpp)
+target_link_libraries(test_lru boost_system)
