@@ -44,17 +44,22 @@ namespace KLib
 				_cacheHitCnt.store(0, boost::memory_order_release);
 
 				double sum = std::accumulate(_samples.begin(), _samples.end(), double(0.0));
-				_hitRage = int((sum / double(_samples.size())) * 100);
+				int hitRate = int((sum / double(_samples.size())) * 100);
+				_hitRage.store(hitRate, boost::memory_order_release);
 			}
 
-			typename boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator>::iterator pos;
-			if ((pos = _keyMap.find(key)) != _keyMap.end()) { //hit
-				_cacheHitCnt.add(1, boost::memory_order_release);
-				typename std::list<Node>::iterator vit = pos->second;
-				_cacheList.splice(_cacheList.begin(), _cacheList, vit);
-				_keyMap[key] = _cacheList.begin();
-				return vit->v;
+			{
+				boost::lock_guard<boost::mutex> guard(_cacheMtx);
+				typename boost::unordered_map<__KEY_TYPE, typename std::list<Node>::iterator>::iterator pos;
+				if ((pos = _keyMap.find(key)) != _keyMap.end()) { //hit
+					_cacheHitCnt.add(1, boost::memory_order_release);
+					typename std::list<Node>::iterator vit = pos->second;
+					_cacheList.splice(_cacheList.begin(), _cacheList, vit);
+					_keyMap[key] = _cacheList.begin();
+					return vit->v;
+				}
 			}
+
 
 			throw std::range_error("not hit");
 		}
@@ -74,11 +79,13 @@ namespace KLib
 				}
 			}
 
-
-			if (_cacheList.size() >= _capacity) {
-				Node const& endNode = _cacheList.back();
-				_keyMap.erase(endNode.k);
-				_cacheList.pop_front();
+			{
+				boost::lock_guard<boost::mutex> guard(_cacheMtx);
+				if (_cacheList.size() >= _capacity) {
+					Node const& endNode = _cacheList.back();
+					_keyMap.erase(endNode.k);
+					_cacheList.pop_front();
+				}
 			}
 
 			{
@@ -89,17 +96,17 @@ namespace KLib
 
 		}
 
-		int hitRate(void)
+		int hitRate(void) const
 		{
 			return _hitRage;
 		}
 
-		size_t reqCnt()
+		size_t reqCnt() const
 		{
 			return _reqCnt;
 		}
 
-		size_t hitCnt()
+		size_t hitCnt() const
 		{
 			return _cacheHitCnt;
 		}
