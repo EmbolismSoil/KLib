@@ -14,7 +14,7 @@
 
 namespace KLib
 {
-	template<class __KEY_TYPE, class __VALUE_TYPE, size_t max_alloc_size=std::numeric_limits<size_t>::max>
+	template<class __KEY_TYPE, class __VALUE_TYPE, size_t max_alloc_size=KLib::__max_size_t_limit>
 	class LRUCache : boost::noncopyable {
 	public:
 		struct Node {
