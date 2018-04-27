@@ -11,6 +11,7 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include <string>
 #include <vector>
 #include <list>
 #include <set>
@@ -20,112 +21,47 @@
 #include <queue>
 #include <algorithm>
 #include <iterator>
-#include <string>
+#include "utils/containerutils.hpp"
 
-#define __DECL_IS_CONTAINER(_container) \
-template<class T, class Alloc> \
-struct is_container<_container<T, Alloc> > \
-{\
-	static const bool value;\
-};\
-template<class T, class Alloc>\
-const bool is_container<_container<T, Alloc> >::value(true)
-
-#define __DECL_MAP_IS_CONTAINER(_map) \
-template<class KT, class VT, class Alloc> \
-struct is_container<_map<KT, VT, Alloc> > \
-{\
-	static const bool value;\
-};\
-template<class KT, class VT, class Alloc>\
-const bool is_container<_map<KT, VT, Alloc> >::value(true);\
-
-#define __DECL_CACHE_TYPE(_container) \
-template<class T, class Alloc> \
-struct cache_type<_container<T, Alloc> > \
-{\
-	typedef _container<typename cache_type<T>::type, TraceAllocator<typename cache_type<T>::type> > type;\
-}
-
-#define __DECL_MAP_CACHE_TYPE(_map)\
-template<class KT, class VT, class Alloc>\
-struct cache_type<_map<KT, VT, Alloc> >\
-{\
-	typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, \
-		TraceAllocator<typename cache_type<std::pair<KT, VT>::type> > > type;\
-}
 
 namespace KLib
 {
-	template<class T, bool is_associative_container>
-	struct __inserter;
 
-	template<class T>
-	struct __inserter<T, false> 
-	{
-		static std::back_insert_iterator<T> inserter(T & c) 
-		{
-			return std::back_inserter(c);
+	#define __DECL_CACHE_TYPE(_container) \
+		template<class T, class Alloc> \
+		struct cache_type<_container<T, Alloc> > \
+		{\
+			typedef _container<typename cache_type<T>::type, TraceAllocator<typename cache_type<T>::type> > type;\
 		}
-	};
 
-	template<class T>
-	struct __inserter<T, true> 
-	{
-		static std::insert_iterator<T> inserter(T &c) 
-		{
-			return std::insert_iterator(c, c.begin());
+	#define __DECL_MAP_CACHE_TYPE(_map)\
+		template<class KT, class VT, class Alloc>\
+		struct cache_type<_map<KT, VT, Alloc> >\
+		{\
+			typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, \
+				TraceAllocator<typename cache_type<std::pair<KT, VT>::type> > > type;\
 		}
-	};
+
 
 	typedef std::basic_string<char, std::char_traits<char>, TraceAllocator<char> > cache_string;
-
 	template<class T>
-	struct is_container
-	{
-		static const bool value;
-	};
-
-	template<class T>
-	const bool is_container<T>::value(false);
-
-	template<> 
-	struct is_container<std::string> 
-	{
-		static const bool value;
-	};
-	
-	const bool is_container<std::string>::value(true);
-
-	__DECL_IS_CONTAINER(std::vector);
-	__DECL_IS_CONTAINER(std::list);
-	__DECL_MAP_IS_CONTAINER(std::map);
-	__DECL_IS_CONTAINER(std::set);
-	__DECL_MAP_IS_CONTAINER(std::multimap);
-	__DECL_IS_CONTAINER(std::multiset);
-	__DECL_IS_CONTAINER(std::stack);
-	__DECL_IS_CONTAINER(std::deque);
-	__DECL_IS_CONTAINER(std::priority_queue);
-
-	template<class T>
-	struct cache_type 
+	struct cache_type
 	{
 		typedef T type;
 	};
 
 	template<>
-	struct cache_type<std::string> 
+	struct cache_type<std::string>
 	{
 		typedef cache_string type;
 	};
 
 	template<class T1, class T2>
-	struct cache_type<std::pair<T1, T2> > 
+	struct cache_type<std::pair<T1, T2> >
 	{
 		typedef std::pair<typename cache_type<T1>::type, typename cache_type<T2>::type> type;
 	};
 
-	#if 1
 	__DECL_CACHE_TYPE(std::vector);
 	__DECL_CACHE_TYPE(std::list);
 	__DECL_MAP_CACHE_TYPE(std::map);
@@ -135,7 +71,6 @@ namespace KLib
 	__DECL_CACHE_TYPE(std::stack);
 	__DECL_CACHE_TYPE(std::deque);
 	__DECL_CACHE_TYPE(std::priority_queue);
-	#endif
 
 	template<class T, bool T_is_container>
 	struct cache_type_converter;
@@ -165,30 +100,29 @@ namespace KLib
 	};
 
 	template<class T1, class T2>
-	struct cache_type_converter<std::pair<T1, T2>, false> 
+	struct cache_type_converter<std::pair<T1, T2>, false>
 	{
-		static typename cache_type<std::pair<T1, T2> >::type from(const std::pair<T1, T2> const& raw) 
+		static typename cache_type<std::pair<T1, T2> >::type from(const std::pair<T1, T2> const& raw)
 		{
 			typename cache_type<std::pair<T1, T2> >::type cache_obj(fromRaw(raw.first), fromRaw(raw.second));
 			return cache_obj;
 		}
 	};
-	
+
 	template<class C>
-	struct cache_type_converter<C, true> 
+	struct cache_type_converter<C, true>
 	{
-		static typename cache_type<C>::type from(const C &raw) 
+		static typename cache_type<C>::type from(const C &raw)
 		{
 			typename cache_type<C>::type cache_obj;
-			if (raw.empty()) 
+			if (raw.empty())
 			{
 				return cache_obj;
 			}
 
-			std::transform(raw.begin(), raw.end(), std::back_inserter(cache_obj), fromRaw);
+			std::transform(raw.begin(), raw.end(), __inserter::inserter<C>(cache_obj), fromRaw);
 		}
 	};
-
 
 	template<class VT, bool VT_is_container>
 	struct __LRUCacheNode;
@@ -223,13 +157,6 @@ namespace KLib
 	public:
 		typedef cache_string __KEY_TYPE;
 		typedef __LRUCacheNode<__VALUE_TYPE, is_container<__VALUE_TYPE>::value> Node;
-#if 0		
-		struct Node {
-			__KEY_TYPE k;
-			__VALUE_TYPE v;
-			Node(__KEY_TYPE const& _k, __VALUE_TYPE const& _v) :k(_k), v(_v) {}
-		};
-#endif
 		typedef std::list<Node, TraceAllocator<Node, max_alloc_size> > CacheList;
 		typedef boost::unordered_map<__KEY_TYPE, typename CacheList::iterator, TraceAllocator<std::pair<const __KEY_TYPE, typename CacheList::iterator>, max_alloc_size > > KeyMap;
 
@@ -243,7 +170,7 @@ namespace KLib
 			++_reqCnt;
             size_t max = 1000;
             size_t zero = 0;
-#if 1
+
 			if (_reqCnt.compare_exchange_strong(max, zero)) {
 				//do sample
 				if (_samples.size() >= 360) {
@@ -258,7 +185,7 @@ namespace KLib
 				int hitRate = int((sum / double(_samples.size())) * 100);
 				_hitRage.store(hitRate, boost::memory_order_release);
 			}
-#endif
+
 			{
 				boost::lock_guard<boost::mutex> guard(_cacheMtx);
 				typename boost::unordered_map<__KEY_TYPE, typename CacheList::iterator>::iterator pos;
