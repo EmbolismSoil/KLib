@@ -1,6 +1,6 @@
 #ifndef __CONTAINERUTILS_HPP__
 #define __CONTAINERUTILS_HPP__
-#include <string>
+
 #include <vector>
 #include <list>
 #include <set>
@@ -10,7 +10,6 @@
 #include <queue>
 #include <algorithm>
 #include <iterator>
-#include <type_traits>
 
 namespace KLib 
 {
@@ -72,26 +71,27 @@ namespace KLib
 	template<class K, class V, class Cmp, class Alloc>
 	const bool is_associative_container<std::multimap<K, V, Cmp, Alloc> >::value(true);
 
-	template<class T, bool is_associative_container=is_associative_container<T>::value >
+	template<class T, bool is_associative_container>
 	struct __inserter;
 
 	template<class T>
 	struct __inserter<T, false>
 	{
-		static std::back_insert_iterator<T> inserter(T & c)
-		{
-			return std::back_inserter(c);
-		}
+		typedef std::back_insert_iterator<T> inserter_iterator;
+
 	};
 
 	template<class T>
 	struct __inserter<T, true>
 	{
-		static std::insert_iterator<T> inserter(T &c)
-		{
-			return std::insert_iterator(c, c.begin());
-		}
-	};
+		typedef std::insert_iterator<T> inserter_iterator;
+	};	
+
+	template<class T>
+	typename __inserter<T, is_associative_container<T>::value>::inserter_iterator inserter(T & c)
+	{
+		return typename __inserter<T, is_associative_container<T>::value>::inserter_iterator(c);
+	}
 
 
 	template<class T>
