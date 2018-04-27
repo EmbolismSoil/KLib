@@ -52,11 +52,32 @@ template<class KT, class VT, class Alloc>\
 struct cache_type<_map<KT, VT, Alloc> >\
 {\
 	typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, \
-		TraceAllocator<std::pair<typename cache_type<KT>::type, typename cache_type<VT>::type> > > type;\
+		TraceAllocator<typename cache_type<std::pair<KT, VT>::type> > > type;\
 }
 
 namespace KLib
 {
+	template<class T, bool is_associative_container>
+	struct __inserter;
+
+	template<class T>
+	struct __inserter<T, false> 
+	{
+		static std::back_insert_iterator<T> inserter(T & c) 
+		{
+			return std::back_inserter(c);
+		}
+	};
+
+	template<class T>
+	struct __inserter<T, true> 
+	{
+		static std::insert_iterator<T> inserter(T &c) 
+		{
+			return std::insert_iterator(c, c.begin());
+		}
+	};
+
 	typedef std::basic_string<char, std::char_traits<char>, TraceAllocator<char> > cache_string;
 
 	template<class T>
@@ -98,6 +119,12 @@ namespace KLib
 		typedef cache_string type;
 	};
 
+	template<class T1, class T2>
+	struct cache_type<std::pair<T1, T2> > 
+	{
+		typedef std::pair<typename cache_type<T1>::type, typename cache_type<T2>::type> type;
+	};
+
 	#if 1
 	__DECL_CACHE_TYPE(std::vector);
 	__DECL_CACHE_TYPE(std::list);
@@ -110,8 +137,17 @@ namespace KLib
 	__DECL_CACHE_TYPE(std::priority_queue);
 	#endif
 
+	template<class T, bool T_is_container>
+	struct cache_type_converter;
+
 	template<class T>
-	struct cache_type_converter
+	typename cache_type<T>::type fromRaw(T const& raw)
+	{
+		return cache_type_converter<T, is_container<T>::value >::from(raw);
+	}
+
+	template<class T>
+	struct cache_type_converter<T, false>
 	{
 		static typename cache_type<T>::type from(T const& raw)
 		{
@@ -120,7 +156,7 @@ namespace KLib
 	};
 
 	template<>
-	struct cache_type_converter<std::string>
+	struct cache_type_converter<std::string, true>
 	{
 		static typename cache_type<std::string>::type from(const std::string &raw)
 		{
@@ -128,26 +164,31 @@ namespace KLib
 		}
 	};
 
-	template<class T, class Alloc>
-	struct cache_type_converter<std::vector<T, Alloc> >
+	template<class T1, class T2>
+	struct cache_type_converter<std::pair<T1, T2>, false> 
 	{
-		static typename cache_type<std::vector<T, Alloc> >::type from(std::vector<T, Alloc> const& raw)
+		static typename cache_type<std::pair<T1, T2> >::type from(const std::pair<T1, T2> const& raw) 
 		{
-			typename cache_type<std::vector<T, Alloc> >::type cache_obj;
-			if (raw.empty())
+			typename cache_type<std::pair<T1, T2> >::type cache_obj(fromRaw(raw.first), fromRaw(raw.second));
+			return cache_obj;
+		}
+	};
+	
+	template<class C>
+	struct cache_type_converter<C, true> 
+	{
+		static typename cache_type<C>::type from(const C &raw) 
+		{
+			typename cache_type<C>::type cache_obj;
+			if (raw.empty()) 
 			{
 				return cache_obj;
 			}
-			std::transform(raw.begin(), raw.end(), std::back_inserter(cache_obj), 
-							&cache_type_converter<T>::from);
-		} 
+
+			std::transform(raw.begin(), raw.end(), std::back_inserter(cache_obj), fromRaw);
+		}
 	};
 
-	template<class T>
-	typename cache_type<T>::type fromRaw(T const& raw)
-	{
-		return cache_type_converter<T>::from(raw);
-	}
 
 	template<class VT, bool VT_is_container>
 	struct __LRUCacheNode;
