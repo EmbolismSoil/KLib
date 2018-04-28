@@ -14,6 +14,7 @@
 #include <type_traits>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include "stdint.h"
 
 #define __DECL_CONTAINER_FMT(_container, _fmt) \
 template<class T, class Alloc>\
@@ -68,6 +69,22 @@ struct is_container<_set<T, Cmp, Alloc> > \
 };\
 template<class T, class Cmp, class Alloc> \
 const bool is_container<_set<T, Cmp, Alloc> >::value(true)
+
+
+#define __DECL_HAS_MEMBER_TYPE(_member) \
+template<class T>\
+struct has_##_member\
+{\
+private:\
+	template<class U>\
+	static const uint8_t __has(typename U::_member *) {}\
+\
+	template<class U>\
+	static const uint16_t __has(...) {}\
+\
+public:\
+	enum { Yes = sizeof(__has<T>(0)) == sizeof(uint8_t) };\
+}
 
 namespace KLib
 {
@@ -184,8 +201,76 @@ namespace KLib
 
 /*------------------------------  end container_fmt  --------------------------------------*/
 
-	template<class T>
-	std::string container_to_string(T const& container);
+
+/*------------------------------   has_value_type    --------------------------------------*/	
+	__DECL_HAS_MEMBER_TYPE(value_type);
+	__DECL_HAS_MEMBER_TYPE(mapped_type);
+
+/*-------------------------------end has_value_type ---------------------------------------*/
+
+template<class T>
+struct has_to_string 
+{
+private:
+	template<class U, std::string(U::*)()> __Helper;
+
+	template<class U>
+	static uint8_t __has(__Helper<U, &U::to_string> *) {}
+
+	template<class U>
+	static uint16_t __has(...) {}
+
+public:
+	enum {value=sizeof(__has<T>(0)) == sizeof(uint8_t)};
+};
+
+/*------------------------------------item_type-----------------------------------------------*/
+template<class T, bool has_mapped_type>
+struct item_type;
+
+template<class T>
+struct item_type<true> 
+{
+	typedef T::mapped_type type;
+};
+
+template<class T>
+struct item_type<false>
+{
+	typedef T::value_type type;
+};
+
+/*-------------------------------    container to string    -------------------------------*/
+	template<class T, bool is_container, bool has_to_string>
+	struct __ToString;
+
+	template<class T, bool has_to_string>
+	struct __ToString<T, true, has_to_string> 
+	{
+		template<bool has_value_type, bool has_mapped_type>
+		static std::string to();
+
+		std::string to(T const& c) 
+		{
+			typedef item_type<T, has_mapped_type<T>::value>::type itemtype;
+			static const bool item_is_container(is_container<itemtype>::value);
+			static const bool item_has_to_string(has_to_string<item_type>::value);
+			
+			typedef __ToString<itemtype, item_is_container, item_has_to_string> __ItemToString;
+
+			std::vector<std::string> buf;
+			for (T::const_iterator pos = c.begin(); pos != c.end(); ++pos) 
+			{
+				itemtype const& item = *pos;
+				buf.push_back(__ItemToString:to(item));				
+			}
+
+			std::string joined = boost::join(buf, ",");
+			boost::format fmt(container_fmt<T>::fmt);
+			fmt % joined;
+			return fmt.str();
+		}
+	};
 
 
 	class __ContainerToStringFunctor {
