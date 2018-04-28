@@ -35,11 +35,11 @@ namespace KLib
 		}
 
 	#define __DECL_MAP_CACHE_TYPE(_map)\
-		template<class KT, class VT, class Alloc>\
-		struct cache_type<_map<KT, VT, Alloc> >\
+		template<class KT, class VT, class Cmp, class Alloc>\
+		struct cache_type<_map<KT, VT, Cmp, Alloc> >\
 		{\
-			typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, \
-				TraceAllocator<typename cache_type<std::pair<KT, VT>::type> > > type;\
+			typedef _map<typename cache_type<KT>::type, typename cache_type<VT>::type, Cmp, \
+				TraceAllocator<std::pair<typename cache_type<KT>::type, typename cache_type<VT>::type> > > type;\
 		}
 
 
@@ -102,9 +102,11 @@ namespace KLib
 	template<class T1, class T2>
 	struct cache_type_converter<std::pair<T1, T2>, false>
 	{
-		static typename cache_type<std::pair<T1, T2> >::type from(const std::pair<T1, T2> const& raw)
+		static typename cache_type<std::pair<T1, T2> >::type from(std::pair<T1, T2> const& raw)
 		{
-			typename cache_type<std::pair<T1, T2> >::type cache_obj(fromRaw(raw.first), fromRaw(raw.second));
+			typename cache_type<std::pair<T1, T2> >::type 
+			cache_obj(cache_type_converter<T1, is_container<T1>::value>::from(raw.first), 
+						cache_type_converter<T2, is_container<T2>::value>::from(raw.second));
 			return cache_obj;
 		}
 	};
@@ -113,14 +115,16 @@ namespace KLib
 	struct cache_type_converter<C, true>
 	{
 		static typename cache_type<C>::type from(const C &raw)
-		{
+		{			
 			typename cache_type<C>::type cache_obj;
+			//typename __inserter<typename cache_type<C>::type>::inserter_iterator oiter(cache_obj);
 			if (raw.empty())
 			{
 				return cache_obj;
 			}
-
-			std::transform(raw.begin(), raw.end(), __inserter::inserter<C>(cache_obj), fromRaw);
+			
+			std::transform(raw.begin(), raw.end(), inserter(cache_obj), 
+				&cache_type_converter<typename C::value_type, is_container<typename C::value_type>::value >::from);
 		}
 	};
 
