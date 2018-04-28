@@ -7,41 +7,49 @@
 #include <map>
 #include <stack>
 #include <deque>
+#include <string>
 #include <queue>
 #include <algorithm>
 #include <iterator>
 #include "String/string_converter.hpp"
-#include <type_traits>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include "stdint.h"
+#include <iostream>
 
 #define __DECL_CONTAINER_FMT(_container, _fmt) \
 template<class T, class Alloc>\
 struct container_fmt<_container<T, Alloc> >\
 {\
-	static const char const* fmt;\
+	static const std::string fmt;\
 };\
 template<class T, class Alloc>\
-const char const* container_fmt<_container<T, Alloc> >::fmt(_fmt)
+const std::string container_fmt<_container<T, Alloc> >::fmt(_fmt);\
+template<class T, class Alloc>\
+struct container_fmt<_container<T, Alloc> const>\
+{\
+	static const std::string fmt;\
+};\
+template<class T, class Alloc>\
+const std::string container_fmt<_container<T, Alloc> const>::fmt(_fmt)
 
 #define __DECL_SET_CONTAINER_FMT(_set, _fmt) \
 template<class T, class Cmp, class Alloc> \
 struct container_fmt<_set<T, Cmp, Alloc> > \
 {\
-	static const char const* fmt;\
+	static const char * fmt;\
 };\
 template<class T, class Cmp, class Alloc> \
-const char const* container_fmt<_set<T, Cmp, Alloc> >::fmt(_fmt)
+const char * container_fmt<_set<T, Cmp, Alloc> >::fmt(_fmt)
 
 #define __DECL_MAP_CONTAINER_FMT(_map, _fmt) \
 template<class K, class V, class Cmp, class Alloc> \
 struct container_fmt<_map<K, V, Cmp, Alloc> > \
 {\
-	static const char const* fmt; \
+	static const char * fmt; \
 };\
 template<class K, class V, class Cmp, class Alloc> \
-const char const* container_fmt<_map<K, V, Cmp, Alloc> >::fmt(_fmt)
+const char * container_fmt<_map<K, V, Cmp, Alloc> >::fmt(_fmt)
 
 #define __DECL_IS_CONTAINER(_container) \
 	template<class T, class Alloc> \
@@ -49,8 +57,15 @@ const char const* container_fmt<_map<K, V, Cmp, Alloc> >::fmt(_fmt)
 	{\
 		static const bool value;\
 	};\
-	template<class T, class Alloc>\
-	const bool is_container<_container<T, Alloc> >::value(true)
+	template<class T, class Alloc> \
+	const bool is_container<_container<T, Alloc> >::value(true); \
+	template<class T, class Alloc> \
+	struct is_container<_container<T, Alloc> const> \
+	{\
+		static const bool value;\
+	};\
+	template<class T, class Alloc> \
+	const bool is_container<_container<T, Alloc> const>::value(true)
 
 #define __DECL_MAP_IS_CONTAINER(_map) \
 	template<class KT, class VT, class Cmp, class Alloc> \
@@ -58,8 +73,15 @@ const char const* container_fmt<_map<K, V, Cmp, Alloc> >::fmt(_fmt)
 	{\
 		static const bool value;\
 	};\
-	template<class KT, class VT, class Cmp, class Alloc>\
-	const bool is_container<_map<KT, VT, Cmp, Alloc> >::value(true)\
+	template<class KT, class VT, class Cmp, class Alloc> \
+	const bool is_container<_map<KT, VT, Cmp, Alloc> >::value(true); \
+	template<class KT, class VT, class Cmp, class Alloc> \
+	struct is_container<_map<KT, VT, Cmp, Alloc> const> \
+	{\
+		static const bool value;\
+	};\
+	template<class KT, class VT, class Cmp, class Alloc> \
+	const bool is_container<_map<KT, VT, Cmp, Alloc> const>::value(true)
 
 #define __DECL_SET_IS_CONTAINER(_set) \
 template<class T, class Cmp, class Alloc>	\
@@ -68,7 +90,14 @@ struct is_container<_set<T, Cmp, Alloc> > \
 	static const bool value; \
 };\
 template<class T, class Cmp, class Alloc> \
-const bool is_container<_set<T, Cmp, Alloc> >::value(true)
+const bool is_container<_set<T, Cmp, Alloc> >::value(true); \
+template<class T, class Cmp, class Alloc>	\
+struct is_container<_set<T, Cmp, Alloc> const> \
+{\
+	static const bool value; \
+};\
+template<class T, class Cmp, class Alloc> \
+const bool is_container<_set<T, Cmp, Alloc> const>::value(true)
 
 
 #define __DECL_HAS_MEMBER_TYPE(_member) \
@@ -83,7 +112,7 @@ private:\
 	static const uint16_t __has(...) {}\
 \
 public:\
-	enum { Yes = sizeof(__has<T>(0)) == sizeof(uint8_t) };\
+	enum { value = sizeof(__has<T>(0)) == sizeof(uint8_t) };\
 }
 
 namespace KLib
@@ -170,8 +199,14 @@ namespace KLib
 	{
 		static const bool value;
 	};
-
 	const bool is_container<std::string>::value(true);
+
+	template<>
+	struct is_container<std::string const>
+	{
+		static const bool value;
+	};
+	const bool is_container<std::string const>::value(true);
 
 	__DECL_IS_CONTAINER(std::vector);
 	__DECL_IS_CONTAINER(std::list);
@@ -198,6 +233,7 @@ namespace KLib
 	__DECL_CONTAINER_FMT(std::stack, "[%s]");
 	__DECL_CONTAINER_FMT(std::deque, "[%s]");
 	__DECL_CONTAINER_FMT(std::priority_queue, "[%s]");
+	__DECL_CONTAINER_FMT(std::pair, "(%s)");
 
 /*------------------------------  end container_fmt  --------------------------------------*/
 
@@ -212,7 +248,7 @@ template<class T>
 struct has_to_string 
 {
 private:
-	template<class U, std::string(U::*)()> __Helper;
+	template<class U, std::string(U::*)()> struct __Helper;
 
 	template<class U>
 	static uint8_t __has(__Helper<U, &U::to_string> *) {}
@@ -224,94 +260,189 @@ public:
 	enum {value=sizeof(__has<T>(0)) == sizeof(uint8_t)};
 };
 
+template<class T>
+struct has_toString
+{
+private:
+	template<class U, std::string(U::*)()> struct __Helper;
+	
+	template<class U>
+	static uint8_t __has(__Helper<U, &U::toString> *){}
+
+	template<class U>
+	static uint16_t __has(...){}
+
+public:
+	enum{value=sizeof(__has<T>(0)) == sizeof(uint8_t)};
+};
+
 /*------------------------------------item_type-----------------------------------------------*/
 template<class T, bool has_mapped_type>
 struct item_type;
 
 template<class T>
-struct item_type<true> 
+struct item_type<T, true> 
 {
-	typedef T::mapped_type type;
+	typedef typename T::mapped_type type;
 };
 
 template<class T>
-struct item_type<false>
+struct item_type<T, false>
 {
-	typedef T::value_type type;
+	typedef typename T::value_type type;
 };
 
-/*-------------------------------    container to string    -------------------------------*/
-	template<class T, bool is_container, bool has_to_string>
-	struct __ToString;
-
-	template<class T, bool has_to_string>
-	struct __ToString<T, true, has_to_string> 
-	{
-		template<bool has_value_type, bool has_mapped_type>
-		static std::string to();
-
-		std::string to(T const& c) 
-		{
-			typedef item_type<T, has_mapped_type<T>::value>::type itemtype;
-			static const bool item_is_container(is_container<itemtype>::value);
-			static const bool item_has_to_string(has_to_string<item_type>::value);
-			
-			typedef __ToString<itemtype, item_is_container, item_has_to_string> __ItemToString;
-
-			std::vector<std::string> buf;
-			for (T::const_iterator pos = c.begin(); pos != c.end(); ++pos) 
-			{
-				itemtype const& item = *pos;
-				buf.push_back(__ItemToString:to(item));				
-			}
-
-			std::string joined = boost::join(buf, ",");
-			boost::format fmt(container_fmt<T>::fmt);
-			fmt % joined;
-			return fmt.str();
-		}
-	};
-
-
-	class __ContainerToStringFunctor {
-	public:
-		__ContainerToStringFunctor(std::string const& seq, std::string const& fmt) :
-			_seq(seq),
-			_fmt(fmt)
-		{
-
-		}
-
-		template<class T>
-		void operator()(T const& item)
-		{
-			std::string tmp;
-			std::stringstream ss;
-			ss << item;
-			ss >> tmp;
-			_buf.push_back(tmp);
-		}
-
-		void operator()(std::string const& item)
-		{
-			boost::format fmt("'%s'");
-			fmt % item;
-			_buf.push_back(fmt.str());
-		}
-
-		std::string get()
-		{
-			boost::format fmt(_fmt);
-			std::string joined = boost::join(_buf, _seq);
-			fmt % joined;
-			return fmt.str();
-		}
-
-	private:
-		std::vector<std::string> _buf;
-		std::string const _seq;
-		std::string const _fmt;
-	};
+template<class T>
+T strto(std::string const& s) 
+{
+	std::istringstream ss(s);
+	T num;
+	ss >> num;
+	return num;
 }
 
+template<class T, bool is_container, bool has_to_string>
+struct __ToString;
+template<class T>
+struct __ToString<T, false, false>
+{
+	static std::string to(T const& c)
+	{
+		std::stringstream ss;
+		ss << c;
+		return ss.str();
+	}
+};
+
+template<>
+struct __ToString<std::string const, true, false>
+{
+	static std::string to(std::string const& s)
+	{
+		boost::format fmt("\"%s\"");
+		fmt % s;
+		return fmt.str();
+	}
+};
+
+template<>
+struct __ToString<std::string, true, false>
+{
+	static std::string to(std::string const& s)
+	{
+		boost::format fmt("\"%s\"");
+		fmt % s;
+		return fmt.str();
+	}
+};
+
+template<>
+struct __ToString<char const*, false, false>
+{
+	static std::string to(char const* s)
+	{
+		boost::format fmt("\"%s\"");
+		fmt % s;
+		return fmt.str();
+	}
+};
+
+template<>
+struct __ToString<char *, false, false>
+{
+	static std::string to(char const* s)
+	{
+		boost::format fmt("\"%s\"");
+		fmt % s;
+		return fmt.str();
+	}
+};
+
+template<class T>
+struct __ToString<T, true, false> 
+{
+	static std::string to(T const& c) 
+	{
+		typedef typename T::value_type itemtype;
+		static const bool item_is_container(is_container<itemtype>::value);
+		static const bool item_has_to_string(has_to_string<itemtype>::value || has_toString<itemtype>::value);
+		
+		typedef __ToString<itemtype, item_is_container, item_has_to_string> __ItemToString;
+
+		std::vector<std::string> buf;
+		for (typename T::const_iterator pos = c.begin(); pos != c.end(); ++pos) 
+		{
+			itemtype const& item = *pos;
+			buf.push_back(__ItemToString::to(item));				
+		}
+
+		std::string joined = boost::join(buf, ", ");
+		boost::format fmt(container_fmt<T>::fmt);
+		fmt % joined;
+		return fmt.str();
+	}
+};
+
+template<class T>
+struct __ToString<T, false, true>
+{
+private:		
+	template<class U, bool U_has_to_string>
+	struct __Helper;
+
+	template<class U>
+	struct __Helper<U, true>
+	{
+		static std::string __to(U const& c)
+		{
+			return c.to_string();
+		}
+	};
+
+	template<class U>
+	struct __Helper<U, false>
+	{
+		static std::string __to(U const& c)
+		{
+			return c.toString();
+		}
+	};
+
+public:		
+	static std::string to(T const& c)
+	{
+		return __Helper<T, has_to_string<T>::value>::__to(c);
+	}
+};
+
+template<class T1, class T2>
+struct __ToString<std::pair<T1, T2>, false, false>
+{
+	static std::string to(std::pair<T1, T2> const& c)
+	{
+		static const bool T1_is_container = is_container<T1>::value;
+		static const bool T2_is_container = is_container<T2>::value;
+		static const bool T1_has_to_string = has_to_string<T1>::value || has_toString<T1>::value;
+		static const bool T2_has_to_string = has_to_string<T2>::value || has_toString<T2>::value;
+
+		typedef __ToString<T1, T1_is_container, T1_has_to_string> T1ToString;
+		typedef __ToString<T2, T2_is_container, T2_has_to_string> T2ToString;
+		
+		boost::format joined_fmt("%s : %s");
+		joined_fmt % T1ToString::to(c.first) % T2ToString::to(c.second);
+		
+		boost::format fmt(container_fmt<std::pair<T1, T2> >::fmt);
+		fmt % joined_fmt.str();
+		return fmt.str();
+	}
+};
+
+
+template<class T>
+std::string tostr(T const& c)
+{
+	return __ToString<T, is_container<T>::value, has_to_string<T>::value || has_toString<T>::value>::to(c);
+}
+
+}
 #endif

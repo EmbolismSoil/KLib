@@ -1,24 +1,29 @@
 #ifndef __STRINGCONVERTER_HPP__
 #define __STRINGCONVERTER_HPP__
+
 #include <string>
 #include <stdlib.h>
 #include <sstream>
+#include <vector>
+#include <list>
+#include <set>
+#include <map>
+#include <stack>
+#include <deque>
+#include <string>
+#include <queue>
+#include <algorithm>
+#include <iterator>
+#include "String/string_converter.hpp"
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
+#include "stdint.h"
 #include <iostream>
+#include "utils/containerutils.hpp"
 
-template<class T>
-T strto(std::string const& s) 
-{
-	std::istringstream ss(s);
-	T num;
-	ss >> num;
-	return num;
-}
+namespace KLib{
 
-template<class T>
-std::string tostr(T const& t) 
-{
-	std::stringstream ss;
-	ss << t;
-	return ss.str();
+
+
 }
 #endif // !__STRINGCONVERTER_HPP__
