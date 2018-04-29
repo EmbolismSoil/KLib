@@ -248,7 +248,7 @@ template<class T>
 struct has_to_string 
 {
 private:
-	template<class U, std::string(U::*)()> struct __Helper;
+	template<class U, std::string(U::* ) () const> struct __Helper;
 
 	template<class U>
 	static uint8_t __has(__Helper<U, &U::to_string> *) {}
@@ -264,7 +264,7 @@ template<class T>
 struct has_toString
 {
 private:
-	template<class U, std::string(U::*)()> struct __Helper;
+	template<class U, std::string(U::*)() const> struct __Helper;
 	
 	template<class U>
 	static uint8_t __has(__Helper<U, &U::toString> *){}
