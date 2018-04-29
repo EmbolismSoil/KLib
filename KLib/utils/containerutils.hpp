@@ -17,6 +17,7 @@
 #include "stdint.h"
 #include <iostream>
 
+#define S(s) #s
 #define __DECL_CONTAINER_FMT(_container, _fmt) \
 template<class T, class Alloc>\
 struct container_fmt<_container<T, Alloc> >\
@@ -341,6 +342,10 @@ struct __ToString<char const*, false, false>
 {
 	static std::string to(char const* s)
 	{
+		if (!s)
+		{
+			return "\"\"";
+		}
 		boost::format fmt("\"%s\"");
 		fmt % s;
 		return fmt.str();
