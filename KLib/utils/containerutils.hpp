@@ -277,6 +277,11 @@ public:
 	enum{value=sizeof(__has<T>(0)) == sizeof(uint8_t)};
 };
 
+template<class T>
+struct has_to_string_or_toString {
+	enum{value=has_toString<T>::value||has_to_string<T>::value};
+};
+
 /*------------------------------------item_type-----------------------------------------------*/
 template<class T, bool has_mapped_type>
 struct item_type;
@@ -369,9 +374,8 @@ struct __ToString<T, true, false>
 	static std::string to(T const& c) 
 	{
 		typedef typename T::value_type itemtype;
-		static const bool item_is_container(is_container<itemtype>::value);
-		static const bool item_has_to_string(has_to_string<itemtype>::value || has_toString<itemtype>::value);
-		
+		enum{item_is_container=is_container<itemtype>::value};
+		enum{item_has_to_string=has_to_string_or_toString<itemtype>::value};
 		typedef __ToString<itemtype, item_is_container, item_has_to_string> __ItemToString;
 
 		std::vector<std::string> buf;
