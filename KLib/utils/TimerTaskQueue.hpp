@@ -78,6 +78,18 @@ namespace KLib
             _updateTimeoutPoint();
         }
 
+        template<class DT>
+        void runEvery(boost::function<void(void)> const& handler,time_type::TimePoint const& timePoint, DT const& period)
+        {
+            TimerPtr timer(new timer_type(timePoint, period, handler));
+            {
+                boost::lock_guard<boost::mutex> guard(_timersMtx);
+                _timers[timer] = false;                
+            }
+
+            _updateTimeoutPoint();
+        }
+
         void exec()
         {
             while(_run.load(boost::memory_order_acquire))
