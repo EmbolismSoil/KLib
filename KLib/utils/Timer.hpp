@@ -9,7 +9,8 @@ namespace KLib
     class Timer
     {
     public:
-        typedef boost::chrono::system_clock::time_point TimePoint;
+        typedef boost::chrono::system_clock Clock;
+        typedef Clock::time_point TimePoint;
         typedef boost::chrono::milliseconds Milliseconds;
         typedef boost::chrono::seconds Seconds;
         typedef boost::chrono::minutes Minutes;
