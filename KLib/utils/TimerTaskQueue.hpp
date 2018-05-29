@@ -14,6 +14,8 @@
 #include <boost/function.hpp>
 #include <boost/bind.hpp>    
 #include <boost/threadpool.hpp> 
+#include <sys/eventfd.h>
+#include <stdint.h>
 
 namespace KLib
 {
@@ -34,12 +36,26 @@ namespace KLib
                 ss << "failed in timerfd_create, ret = " << _timerfd << ", " << buf;
                 throw std::runtime_error(ss.str());
             }
+
+            _eventfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+            if (_eventfd < 0)
+            {
+                std::stringstream ss;
+                char buf[1024];
+                strerror_r(errno, buf, sizeof(buf));
+                ss << "failed in timerfd_create, ret = " << _eventfd << ", " << buf;
+                throw std::runtime_error(ss.str());
+            }
+
             _run.store(true);
 
             ::pollfd pfd;
             pfd.fd = _timerfd;
             pfd.events = (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND);
 
+            _fds.push_back(pfd);
+
+            pfd.fd = _eventfd;
             _fds.push_back(pfd);
         }
 
@@ -107,12 +123,20 @@ namespace KLib
                 }else{
                     for (std::vector<::pollfd>::const_iterator pos = _fds.begin(); pos != _fds.end() && ret; ++pos )
                     {
-                        ::pollfd const& pfd = *pos;
+                        ::pollfd const& pfd = *pos;                        
+
                         if (pfd.revents & (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND))
                         {
-                            ::itimerspec time;
-                            timerfd_gettime(_timerfd, &time);
-                            handleTimeout(time);
+                            if (pfd.fd == _timerfd){
+                                ::itimerspec time;
+                                timerfd_gettime(_timerfd, &time);
+                                handleTimeout(time);
+                            }else{
+                                //eventfd
+                                uint64_t tmp;
+                                ::read(_eventfd, &tmp, sizeof(tmp));
+                                (void)tmp;
+                            }
                             --ret;
                         }
                     }
@@ -124,10 +148,17 @@ namespace KLib
         void exit()
         {
             _run.store(false, boost::memory_order_release);
+            _wakeUp();
         }
         
     private:
         typedef boost::shared_ptr<timer_type> TimerPtr;
+
+        void _wakeUp()
+        {
+            uint64_t counter = 0;
+            ::write(_eventfd, &counter, sizeof(counter));
+        }
 
         static void _handle(TimerPtr ptr)
         {
@@ -223,6 +254,7 @@ namespace KLib
 
         std::map<TimerPtr, bool, _timer_cmp> _timers;
         int _timerfd;
+        int _eventfd;
 
         boost::atomics::atomic<bool> _run;
         std::vector<::pollfd> _fds;
