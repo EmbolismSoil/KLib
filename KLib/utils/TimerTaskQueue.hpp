@@ -12,6 +12,8 @@
 #include <iostream>
 #include <boost/thread.hpp>
 #include <boost/function.hpp>
+#include <boost/bind.hpp>    
+#include <boost/threadpool.hpp> 
 
 namespace KLib
 {
@@ -19,8 +21,9 @@ namespace KLib
     {
     public:
         typedef Timer<boost::function<void(void)> > timer_type;
-        TimerTaskQueue(int timeout_ms = -1):
-            _timeout(timeout_ms)
+        TimerTaskQueue(int timeout_ms = -1, int threads = 1):
+            _timeout(timeout_ms),
+            _workders(threads)
         {
             _timerfd = ::timerfd_create(CLOCK_REALTIME, 0);
             if (_timerfd < 0)
@@ -38,6 +41,11 @@ namespace KLib
             pfd.events = (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND);
 
             _fds.push_back(pfd);
+        }
+
+        virtual ~TimerTaskQueue()
+        {
+            _workders.join();
         }
 
         void runAt(boost::function<void(void)> const& handler, Timer::TimePoint timePoint)
@@ -109,6 +117,11 @@ namespace KLib
     private:
         typedef boost::shared_ptr<timer_type> TimerPtr;
 
+        static void _handle(TimerPtr ptr)
+        {
+            ptr->handle();
+        }
+
         static bool _timer_cmp(TimerPtr x, TimerPtr y)
         {
             return x->getTimeoutPoint() < y->getTimeoutPoint();
@@ -151,7 +164,7 @@ namespace KLib
 
             for (std::vector<TimerPtr>::iterator pos = timeoutTimers.begin(); pos != timeoutTimers.end(); ++pos)
             {
-                pos->handle();
+                _workders.schedule(boost::bind(&TimerTaskQueue::_handle, *pos));
             }
             
             {
@@ -204,6 +217,7 @@ namespace KLib
         int const _timeout;
 
         boost::mutex _timersMtx;
+        boost::threadpool::pool _workders;
     };
 }
 
