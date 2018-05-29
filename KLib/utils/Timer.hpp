@@ -9,7 +9,7 @@ namespace KLib
     class Timer
     {
     public:
-        typedef boost::chrono::high_resolution_clock::time_point TimePoint;
+        typedef boost::chrono::system_clock::time_point TimePoint;
         typedef boost::chrono::milliseconds Milliseconds;
         typedef boost::chrono::seconds Seconds;
         typedef boost::chrono::minutes Minutes;
@@ -55,7 +55,7 @@ namespace KLib
         int next()
         {
             if (_isPeroid()) {
-                _timeout = boost::chrono::high_resolution_clock::now() + _period;
+                _timeout = boost::chrono::system_clock::now() + _period;
                 return 0;
             }else{
                 return -1;

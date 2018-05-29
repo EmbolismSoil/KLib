@@ -61,14 +61,14 @@ namespace KLib
         template<class DT>
         void runAfter(boost::function<void(void)> const& handler, DT const& duration)
         {
-            timer_type::TimePoint timeout = boost::chrono::high_resolution_clock::now() + duration;
+            timer_type::TimePoint timeout = boost::chrono::system_clock::now() + duration;
             runAt(handler, timeout);
         }
 
         template<class DT>
         void runEvery(boost::function<void(void)> const& handler, DT const& period)
         {
-            timer_type::TimePoint timeout = boost::chrono::high_resolution_clock::now() + period;
+            timer_type::TimePoint timeout = boost::chrono::system_clock::now() + period;
             TimerPtr timer(new timer_type(timePoint, period, handler));
             {
                 boost::lock_guard<boost::mutex> guard(_timersMtx);
@@ -150,7 +150,7 @@ namespace KLib
                 return;
             }
 
-            timer_type::TimePoint timePoint = boost::chrono::high_resolution_clock::now();
+            timer_type::TimePoint timePoint = boost::chrono::system_clock::now();
             std::vector<TimerPtr> timeoutTimers;
             std::map<TimerPtr, bool, _timer_cmp>::const_iterator pos = _timers.begin();
 
