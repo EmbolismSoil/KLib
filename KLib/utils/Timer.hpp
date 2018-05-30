@@ -35,7 +35,7 @@ namespace KLib
         Timer(TimePoint timeout, Minutes period, T const& handler):
             _handler(handler),
             _timeout(timeout),
-            _period(boost::duration_cast<Milliseconds>())
+            _period(boost::chrono::duration_cast<Milliseconds>(period))
         {
 
         }
