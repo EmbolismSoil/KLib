@@ -50,14 +50,16 @@ public:
 private:
     void _run()
     {
-        boost::function<void(void)> task;
-        boost::unique_lock<boost::mutex> lk(_mtx);
-        _cond.wait(lk, boost::bind(&ThreadPool::_hasTask, this));
-        task = _tasks.back();
-        _tasks.pop_back();
-        lk.unlock();
-
-        task();
+        for (;;){
+            boost::function<void(void)> task;
+            boost::unique_lock<boost::mutex> lk(_mtx);
+            _cond.wait(lk, boost::bind(&ThreadPool::_hasTask, this));
+            task = _tasks.back();
+            _tasks.pop_back();
+            lk.unlock();
+    
+            task();
+        }
     }
 
     bool _hasTask()
