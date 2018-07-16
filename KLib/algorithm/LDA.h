@@ -13,6 +13,7 @@
 #include <numeric>
 #include <algorithm>
 #include <random>
+#include <set>
 
 namespace LDA{
     class LDAModel {
@@ -25,7 +26,8 @@ namespace LDA{
             _alphas(alphas),
             _max_iters(max_iter),
             _K(K),
-            _words_num_of_topics(K, 0)
+            _words_num_of_topics(K, 0),
+            _topic_word_distribution(K)
         {
             _build_vocabulary(docs);
             _build_docs(docs);
@@ -41,6 +43,34 @@ namespace LDA{
                     }
                 }
             }
+
+            _build_topic_word_distribution();
+        }
+
+        void getTopKWords(uint64_t const topic, uint64_t const k, std::vector<std::string> & words)
+        {
+            std::vector<std::pair<uint64_t, double> > const& t = _topic_word_distribution[topic];
+            for (uint64_t i = 0; i < k && i < t.size(); ++i)
+            {
+                std::pair<uint64_t, double> const& item = t[i];
+                std::string const& w = _vocabulary[item.first];
+                words.push_back(w);
+            }
+        }
+
+        std::vector<std::vector<uint64_t> > const& getZ()
+        {
+            return _Z;
+        }
+
+        std::vector<std::string> const& getVocabulary()
+        {
+            return _vocabulary;
+        }
+
+        std::vector<std::vector<uint64_t> > const& getDocs()
+        {
+            return _docs;
         }
 
     private:
@@ -56,25 +86,49 @@ namespace LDA{
         uint64_t _alphas_sum;
 
         std::unordered_map<std::string, uint64_t > _vocabulary_map;
+        std::vector<std::string> _vocabulary;
 
         uint64_t _nv; //total numbers of _vocabulary
         std::vector<std::vector<uint64_t > > _Z;//topics
 
         std::vector<std::vector<uint64_t > > _word_topic_distribution; //mat(_nv, _K)
         std::vector<uint64_t > _words_num_of_topics;
+        std::vector<std::vector<std::pair<uint64_t, double> > > _topic_word_distribution;
+
+        void _build_topic_word_distribution()
+        {
+           for(uint64_t w = 0; w < _word_topic_distribution.size(); ++w)
+           {
+                std::vector<uint64_t> const& topics = _word_topic_distribution[w];
+                uint64_t sum = std::accumulate(topics.begin(), topics.end(), uint64_t(0));                
+                std::vector<double> dis;
+                std::transform(topics.begin(), topics.end(), std::back_inserter(dis), [sum](uint64_t const& n){return double(n)/double(sum);});
+                for(uint64_t i = 0; i < _K; ++i){
+                    _topic_word_distribution[i].push_back(std::make_pair(w, dis[i]));
+                }
+           }
+
+
+           for(uint64_t i = 0; i < _K; ++i)
+           {
+               std::sort(_topic_word_distribution[i].begin(), _topic_word_distribution[i].end(), 
+                               [this](std::pair<uint64_t, double> const& lhs, std::pair<uint64_t, double> const& rhs){return lhs.second > rhs.second;});
+           }
+        }       
 
         void _build_vocabulary(std::vector<std::vector<std::string> >  const& docs)
         {
-            std::vector<std::string> vocabulary;
+            std::set<std::string> vocabulary;
             for (auto const& doc : docs){
                 for (auto const& word : doc){
-                    vocabulary.push_back(word);
+                    vocabulary.insert(word);
                 }
             }
 
-            for(std::vector<std::string>::size_type i = 0; i < vocabulary.size(); ++i){
-                std::string const& word = vocabulary[i];
-                _vocabulary_map[word] = i;
+            uint64_t idx = 0;
+            for(auto const& word : vocabulary){
+                _vocabulary_map[word] = idx++;
+                _vocabulary.push_back(word);
             }
 
             _nv = vocabulary.size();
@@ -82,12 +136,12 @@ namespace LDA{
 
         void _build_docs(std::vector<std::vector<std::string> >  const& docs)
         {
-            std::vector<double> p(_K, 0.5);
+            std::vector<double> p(_K, 1.0/_K);
 
             for(auto const& doc: docs){
                 std::vector<uint64_t > normalized_doc;
                 std::vector<uint64_t > word_topics;
-                std::transform(doc.begin(), doc.end(), std::back_inserter(normalized_doc), [this](std::string const& w){return _vocabulary_map[w]});
+                std::transform(doc.begin(), doc.end(), std::back_inserter(normalized_doc), [this](std::string const& w){return _vocabulary_map[w];});
                 std::transform(doc.begin(), doc.end(), std::back_inserter(word_topics), [this, p](std::string const& w){return _multinomial(p);});
                 _docs.push_back(normalized_doc);
                 _Z.push_back(word_topics);
@@ -134,11 +188,11 @@ namespace LDA{
 
             double p_z_sum = 0.0;
             for (std::vector<double >::size_type k = 0; k < _K; ++k){
-                double p_z_w = (_word_topic_distribution[word][k] + _betas[word]) / (_words_num_of_topics[k] + _betas_sum);
-                double p_doc_z = (_docs_z[m][k] + _alphas[k]) / (_docs_v_num[m] + _alphas_sum);
+                double p_z_w = (_word_topic_distribution[word][k] + _alphas[word]) / (_words_num_of_topics[k] + _alphas_sum);
+                double p_doc_z = (_docs_z[m][k] + _betas[k]) / (_docs_v_num[m] + _betas_sum);
                 double p = p_z_w * p_doc_z;
                 p_z_sum += p;
-                p_z.push_back(p);
+                p_z[k] = p;
             }
 
             std::transform(p_z.begin(), p_z.end(), p_z.begin(), [p_z_sum](double const& p){return p / p_z_sum;});
@@ -151,10 +205,11 @@ namespace LDA{
         }
 
         uint64_t _multinomial(std::vector<double> const& p){
-            std::default_random_engine engine(time(nullptr));
-            std::uniform_real_distribution<double> distribution(0, 1.0);
+            std::random_device rd;  // 将用于为随机数引擎获得种子
+            std::mt19937 gen(rd());
+            std::uniform_real_distribution<double> dis(0, 1.0);
 
-            double n = distribution(engine);
+            double n = dis(gen);
             double sum = 0.0;
 
             for (std::vector<double>::size_type i = 0; i < p.size(); ++i)
