@@ -6,7 +6,7 @@ message Paramters
     {
         required uint64 word = 1;
         required uint64 topic = 2;
-        required uint64 cnt = 3;
+        required double phi = 3;
     };
 
     repeated string vocabulary = 1;

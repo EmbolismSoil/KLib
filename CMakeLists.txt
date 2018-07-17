@@ -2,7 +2,7 @@
 # 和此处的包含子项目。
 #
 cmake_minimum_required (VERSION 3.5)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++03 -g")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 project ("KLib")
 
 # 包含子项目。
