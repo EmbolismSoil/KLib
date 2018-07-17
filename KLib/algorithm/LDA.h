@@ -66,14 +66,27 @@ namespace LDA{
             }
         }
 
-        std::vector<std::vector<uint64_t> > const& getZ()
-        {
-            return _Z;
-        }
-
         std::vector<std::string> const& getVocabulary()
         {
             return _vocabulary;
+        }
+ 
+        uint64_t word2Idx(std::string const& w)
+        {
+            if (_vocabulary_map.find(w) != _vocabulary_map.end()){
+                return _vocabulary_map[w];
+            }else{
+                throw std::runtime_error("word not found");
+            }
+        }
+
+        std::string const& idx2Word(uint64_t idx)
+        {
+            if (idx >= _vocabulary.size()){
+                throw std::runtime_error("index not found");
+            }
+
+            return _vocabulary[idx];
         }
 
         std::vector<std::vector<uint64_t> > const& getDocs()
@@ -144,7 +157,9 @@ namespace LDA{
            model->_alphas.swap(alphas);
            
            for (uint64_t idx = 0; idx < paramters.vocabulary_size(); ++idx){
-               model->_vocabulary.push_back(paramters.vocabulary(idx));
+               std::string const& w = paramters.vocabulary(idx);
+               model->_vocabulary.push_back(w);
+               model->_vocabulary_map[w] = idx;
            }
 
            model->_topic_word_distribution.resize(K);
