@@ -1,0 +1,17 @@
+package LDA;
+
+message Paramters
+{    
+    message TopicWord
+    {
+        required uint64 word = 1;
+        required uint64 topic = 2;
+        required uint64 cnt = 3;
+    };
+
+    repeated string vocabulary = 1;
+    repeated TopicWord topic_word_mat = 2;
+    required uint64 k = 3;
+    repeated double betas = 4;
+    repeated double alphas = 5;
+}

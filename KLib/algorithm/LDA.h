@@ -8,12 +8,14 @@
 #include <stdint.h>
 #include <vector>
 #include <string>
-#include <memory.h>
+#include <memory>
 #include <unordered_map>
 #include <numeric>
 #include <algorithm>
 #include <random>
 #include <set>
+#include "LDA.pb.h"
+#include <fstream>
 
 namespace LDA{
     class LDAModel {
@@ -21,7 +23,7 @@ namespace LDA{
         LDAModel(std::vector<std::vector<std::string> > const& docs,
                  std::vector<double> const& betas, std::vector<double> const& alphas,
                  uint64_t K, uint64_t const max_iter):
-
+            _isTrained(false),
             _betas(betas),
             _alphas(alphas),
             _max_iters(max_iter),
@@ -36,6 +38,11 @@ namespace LDA{
 
         void run()
         {
+            if (_isTrained)
+            {
+                std::runtime_error("model has been trained");
+            }
+
             for (uint64_t iter = 0; iter < _max_iters; ++iter){
                 for (uint64_t m = 0; m < _docs.size(); ++m){
                     for (uint64_t t = 0; t < _docs[m].size(); ++t){
@@ -45,6 +52,7 @@ namespace LDA{
             }
 
             _build_topic_word_distribution();
+            _isTrained = true;
         }
 
         void getTopKWords(uint64_t const topic, uint64_t const k, std::vector<std::string> & words)
@@ -72,16 +80,98 @@ namespace LDA{
         {
             return _docs;
         }
+        
+        void save(std::string const& path)
+        {
+            if (_topic_word_distribution.empty()){
+                std::runtime_error("topic-word-distribution is empty");
+            }
+
+            Paramters paramters;	
+            paramters.set_k(_K);
+
+            for(auto const& beta : _betas){
+                paramters.add_betas(beta);
+	    }
+            
+            for(auto const& alpha: _alphas){
+                paramters.add_alphas(alpha);
+            }
+
+            for (uint64_t topic = 0; topic < _topic_word_distribution.size(); ++topic){
+                for(auto const& word : _topic_word_distribution[topic]){
+                    uint64_t w = word.first;
+                    uint64_t cnt = word.second;
+                    auto mat = paramters.add_topic_word_mat();
+                    mat->set_word(w);
+                    mat->set_topic(topic);
+                    mat->set_cnt(cnt);
+                }
+            }
+
+            for (auto const & w : _vocabulary)
+	    {
+                paramters.add_vocabulary(w);
+            }
+
+            std::ofstream out(path.c_str());
+            paramters.SerializeToOstream(&out);
+        }
+
+       static std::shared_ptr<LDAModel> load(std::string const& path)
+       {
+           std::ifstream in(path.c_str());
+           Paramters paramters;
+           if(!paramters.ParseFromIstream(&in)){
+               throw std::runtime_error("failed to parse LDA Model");
+           }
+           
+           uint64_t K = paramters.k();
+           std::vector<double> betas;
+ 
+           for(int idx = 0; idx < paramters.betas_size(); ++idx){
+               betas.push_back(paramters.betas(idx));
+           }
+           
+           std::vector<double> alphas;
+           for (int idx = 0; idx < paramters.alphas_size(); ++idx){
+               alphas.push_back(paramters.alphas(idx));
+           }
+
+           auto model = new LDAModel();
+           model->_K = K;
+           model->_betas.swap(betas);
+           model->_alphas.swap(alphas);
+           
+           for (uint64_t idx = 0; idx < paramters.vocabulary_size(); ++idx){
+               model->_vocabulary.push_back(paramters.vocabulary(idx));
+           }
+
+           model->_topic_word_distribution.resize(K);
+           for(uint64_t idx = 0; idx < paramters.topic_word_mat_size(); ++idx){
+               auto const& topicWord = paramters.topic_word_mat(idx);
+               uint64_t topic = topicWord.topic();
+               uint64_t word = topicWord.word();
+               uint64_t cnt = topicWord.cnt();
+
+               model->_topic_word_distribution[topic].push_back(std::make_pair(word, cnt));
+           }
+           
+           return std::shared_ptr<LDAModel>(model);
+       }
 
     private:
-        std::vector<double> const _betas;
-        std::vector<double> const _alphas;
+	LDAModel(){}
+
+        bool _isTrained;
+        std::vector<double> _betas;
+        std::vector<double> _alphas;
         std::vector<std::vector<uint64_t > > _docs;
         std::vector<std::vector<uint64_t > > _docs_z;
         std::vector<uint64_t > _docs_v_num;
 
-        uint64_t const _max_iters;
-        uint64_t const _K;
+        uint64_t _max_iters;
+        uint64_t _K;
         uint64_t _betas_sum;
         uint64_t _alphas_sum;
 
