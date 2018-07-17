@@ -46,6 +46,10 @@ namespace LDA{
             for (uint64_t iter = 0; iter < _max_iters; ++iter){
                 for (uint64_t m = 0; m < _docs.size(); ++m){
                     for (uint64_t t = 0; t < _docs[m].size(); ++t){
+                        double iter_progress = 100*double(iter)/double(_max_iters);
+                        double doc_progress = 100*double(m)/double(_docs.size());
+                        double word_progress = 100*double(t)/double(_docs[m].size());
+                        printf("\033[?25l总体进度: %5.2lf%%  文章进度: %5.2lf%%  词进度: %5.2lf%% \r", iter_progress, doc_progress, word_progress);
                         _do_sample(m, t);
                     }
                 }
