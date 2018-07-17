@@ -49,10 +49,10 @@ namespace LDA{
 
         void getTopKWords(uint64_t const topic, uint64_t const k, std::vector<std::string> & words)
         {
-            std::vector<std::pair<uint64_t, double> > const& t = _topic_word_distribution[topic];
+            std::vector<std::pair<uint64_t, uint64_t> > const& t = _topic_word_distribution[topic];
             for (uint64_t i = 0; i < k && i < t.size(); ++i)
             {
-                std::pair<uint64_t, double> const& item = t[i];
+                std::pair<uint64_t, uint64_t> const& item = t[i];
                 std::string const& w = _vocabulary[item.first];
                 words.push_back(w);
             }
@@ -93,16 +93,15 @@ namespace LDA{
 
         std::vector<std::vector<uint64_t > > _word_topic_distribution; //mat(_nv, _K)
         std::vector<uint64_t > _words_num_of_topics;
-        std::vector<std::vector<std::pair<uint64_t, double> > > _topic_word_distribution;
+        std::vector<std::vector<std::pair<uint64_t, uint64_t> > > _topic_word_distribution;
 
         void _build_topic_word_distribution()
         {
            for(uint64_t w = 0; w < _word_topic_distribution.size(); ++w)
            {
                 std::vector<uint64_t> const& topics = _word_topic_distribution[w];
-                uint64_t sum = std::accumulate(topics.begin(), topics.end(), uint64_t(0));                
-                std::vector<double> dis;
-                std::transform(topics.begin(), topics.end(), std::back_inserter(dis), [sum](uint64_t const& n){return double(n)/double(sum);});
+                std::vector<uint64_t> dis;
+                std::copy(topics.begin(), topics.end(), std::back_inserter(dis));
                 for(uint64_t i = 0; i < _K; ++i){
                     _topic_word_distribution[i].push_back(std::make_pair(w, dis[i]));
                 }
@@ -112,7 +111,7 @@ namespace LDA{
            for(uint64_t i = 0; i < _K; ++i)
            {
                std::sort(_topic_word_distribution[i].begin(), _topic_word_distribution[i].end(), 
-                               [this](std::pair<uint64_t, double> const& lhs, std::pair<uint64_t, double> const& rhs){return lhs.second > rhs.second;});
+                               [this](std::pair<uint64_t, uint64_t> const& lhs, std::pair<uint64_t, uint64_t> const& rhs){return lhs.second > rhs.second;});
            }
         }       
 
