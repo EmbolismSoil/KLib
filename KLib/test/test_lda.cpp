@@ -57,7 +57,7 @@ int main(int argc, const char* argv[])
     }
 
 
-    LDAModel lda(docs, std::vector<double>(50, 0.01), std::vector<double>(n, 5.0), 20, 200);
+    LDAModel lda(docs, std::vector<double>(50, 0.01), std::vector<double>(n, 5.0), 50, 20);
     lda.run();
     
     for(uint64_t i = 0; i < 50; ++i)

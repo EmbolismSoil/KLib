@@ -61,11 +61,15 @@ namespace LDA{
 
         void getTopKWords(uint64_t const topic, uint64_t const k, std::vector<std::string> & words)
         {
-            std::vector<std::pair<uint64_t, double> > const& t = _topic_word_distribution[topic];
-            for (uint64_t i = 0; i < k && i < t.size(); ++i)
+            std::vector<std::pair<uint64_t, double> > tmp;
+            std::vector<double> const& tw = _topic_word_distribution[topic];
+            uint64_t idx = 0;
+            std::transform(tw.begin(), tw.end(), std::back_inserter(tmp), [idx](double p)mutable{return std::make_pair(idx++, p);});
+            std::sort(tmp.begin(), tmp.end(), [](std::pair<uint64_t, double> const& lhs, std::pair<uint64_t, double> const& rhs){return lhs.second > rhs.second;});
+
+            for (uint64_t i = 0; i < k; ++i)
             {
-                std::pair<uint64_t, double> const& item = t[i];
-                std::string const& w = _vocabulary[item.first];
+                std::string const& w = _vocabulary[tmp[i].first];
                 words.push_back(w);
             }
         }
@@ -116,9 +120,8 @@ namespace LDA{
             }
 
             for (uint64_t topic = 0; topic < _topic_word_distribution.size(); ++topic){
-                for(auto const& word : _topic_word_distribution[topic]){
-                    uint64_t w = word.first;
-                    double phi = word.second;
+                for(uint64_t w = 0; w < _topic_word_distribution[topic][w]; ++w){
+                    double phi = _topic_word_distribution[topic][w];
                     auto mat = paramters.add_topic_word_mat();
                     mat->set_word(w);
                     mat->set_topic(topic);
@@ -159,6 +162,10 @@ namespace LDA{
            model->_K = K;
            model->_betas.swap(betas);
            model->_alphas.swap(alphas);
+
+           std::vector<double> tmp(model->_nv, 0.0);
+           std::vector<std::vector<double> > tmp1(model->_K, tmp);
+           model->_topic_word_distribution.swap(tmp1);
            
            for (uint64_t idx = 0; idx < paramters.vocabulary_size(); ++idx){
                std::string const& w = paramters.vocabulary(idx);
@@ -173,7 +180,7 @@ namespace LDA{
                uint64_t word = topicWord.word();
                double phi = topicWord.phi();
 
-               model->_topic_word_distribution[topic].push_back(std::make_pair(word, phi));
+               model->_topic_word_distribution[topic][word] = phi;
            }
            
            return std::shared_ptr<LDAModel>(model);
@@ -202,25 +209,37 @@ namespace LDA{
 
         std::vector<std::vector<uint64_t > > _word_topic_distribution; //mat(_nv, _K)
         std::vector<uint64_t > _words_num_of_topics;
-        std::vector<std::vector<std::pair<uint64_t, double> > > _topic_word_distribution;
+        std::vector<std::vector<double> > _topic_word_distribution;
+        std::vector<std::vector<double> > _doc_topic_distribution;
+
+        void _build_doc_topic_distribution()
+        {
+            std::vector<double> tmp(_K, 0.0);
+            std::vector<std::vector<double> > tmp1(_docs.size(), tmp);
+            _doc_topic_distribution.swap(tmp1);
+
+            for (uint64_t m = 0; m < _docs.size(); ++m){
+                for(uint64_t k = 0; k < _K; ++k){
+                    double p_doc_z = (_docs_z[m][k] + _betas[k]) / (_docs_v_num[m] + _betas_sum);
+                    _doc_topic_distribution[m][k] = p_doc_z;
+                }
+            }
+        }
 
         void _build_topic_word_distribution()
         {
+            std::vector<double> tmp(_nv, 0.0);
+            std::vector<std::vector<double> > tmp1(_K, tmp);
+            _topic_word_distribution.swap(tmp1);
+
             for (uint64_t topic = 0; topic < _K; ++topic)
             {
-                for(uint64_t w = 0; w < _word_topic_distribution.size(); ++w)
+                for(uint64_t w = 0; w < _nv; ++w)
                 {
-                    double phi = (_word_topic_distribution[w][topic] + _alphas[w]) / (_words_num_of_topics[topic] + _alphas_sum);
-                    _topic_word_distribution[topic].push_back(std::make_pair(w, phi));
+                    double phi = double(_word_topic_distribution[w][topic] + _alphas[w]) / double(_words_num_of_topics[topic] + _alphas_sum);
+                    _topic_word_distribution[topic][w] = phi;
                 }
             }
-
-
-           for(uint64_t i = 0; i < _K; ++i)
-           {
-               std::sort(_topic_word_distribution[i].begin(), _topic_word_distribution[i].end(), 
-                               [this](std::pair<uint64_t, double> const& lhs, std::pair<uint64_t, double> const& rhs){return lhs.second > rhs.second;});
-           }
         }       
 
         void _build_vocabulary(std::vector<std::vector<std::string> >  const& docs)
@@ -295,8 +314,8 @@ namespace LDA{
 
             double p_z_sum = 0.0;
             for (std::vector<double >::size_type k = 0; k < _K; ++k){
-                double p_z_w = (_word_topic_distribution[word][k] + _alphas[word]) / (_words_num_of_topics[k] + _alphas_sum);
-                double p_doc_z = (_docs_z[m][k] + _betas[k]) / (_docs_v_num[m] + _betas_sum);
+                double p_z_w = double(_word_topic_distribution[word][k] + _alphas[word]) / double(_words_num_of_topics[k] + _alphas_sum);
+                double p_doc_z = double(_docs_z[m][k] + _betas[k]) / double(_docs_v_num[m] + _betas_sum);
                 double p = p_z_w * p_doc_z;
                 p_z_sum += p;
                 p_z[k] = p;
@@ -311,8 +330,13 @@ namespace LDA{
             _docs_v_num[m] += 1;
         }
 
+        double _p_w(uint64_t m, uint64_t t)
+        {
+
+        }
+
         uint64_t _multinomial(std::vector<double> const& p){
-            std::random_device rd;  // 将用于为随机数引擎获得种子
+            std::random_device rd;  
             std::mt19937 gen(rd());
             std::uniform_real_distribution<double> dis(0, 1.0);
 
