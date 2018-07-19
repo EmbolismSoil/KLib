@@ -16,6 +16,10 @@
 #include <set>
 #include "LDA.pb.h"
 #include <fstream>
+#include <math.h>
+#include <iostream>
+#include <numeric>
+#include <limits>
 
 namespace LDA{
     class LDAModel {
@@ -43,19 +47,41 @@ namespace LDA{
                 std::runtime_error("model has been trained");
             }
 
-            for (uint64_t iter = 0; iter < _max_iters; ++iter){
+            for (uint64_t m = 0; m < _docs.size(); ++m){
+                for (uint64_t t = 0; t < _docs[m].size(); ++t){
+                    double iter_progress = 100*double(1)/double(_max_iters);
+                    double doc_progress = 100*double(m)/double(_docs.size());
+                    double word_progress = 100*double(t)/double(_docs[m].size());
+                    _do_sample(m, t);
+                }
+            }
+
+            _build_topic_word_distribution();
+            _build_doc_topic_distribution();
+            double perlexity = _perplexity();
+
+            for (uint64_t iter = 1; iter < _max_iters; ++iter){
                 for (uint64_t m = 0; m < _docs.size(); ++m){
                     for (uint64_t t = 0; t < _docs[m].size(); ++t){
                         double iter_progress = 100*double(iter)/double(_max_iters);
                         double doc_progress = 100*double(m)/double(_docs.size());
                         double word_progress = 100*double(t)/double(_docs[m].size());
-                        printf("\033[?25l总体进度: %5.2lf%%  文章进度: %5.2lf%%  词进度: %5.2lf%% \r", iter_progress, doc_progress, word_progress);
                         _do_sample(m, t);
+                        printf("\033[?25l总体进度: %5.2lf%%  文章进度: %5.2lf%%  词进度: %5.2lf%% 困惑度： %20.18lf\r", iter_progress, doc_progress, word_progress, perlexity);
                     }
+                }
+
+                _build_topic_word_distribution();
+                _build_doc_topic_distribution();
+                double next_perlexity = _perplexity();
+
+                if (next_perlexity > perlexity){
+                    break;
+                }else{
+                    perlexity = next_perlexity;
                 }
             }
 
-            _build_topic_word_distribution();
             _isTrained = true;
         }
 
@@ -211,6 +237,7 @@ namespace LDA{
         std::vector<uint64_t > _words_num_of_topics;
         std::vector<std::vector<double> > _topic_word_distribution;
         std::vector<std::vector<double> > _doc_topic_distribution;
+        uint64_t _N;
 
         void _build_doc_topic_distribution()
         {
@@ -220,7 +247,7 @@ namespace LDA{
 
             for (uint64_t m = 0; m < _docs.size(); ++m){
                 for(uint64_t k = 0; k < _K; ++k){
-                    double p_doc_z = (_docs_z[m][k] + _betas[k]) / (_docs_v_num[m] + _betas_sum);
+                    double p_doc_z = double(_docs_z[m][k] + _betas[k]) / double(_docs_v_num[m] + _betas_sum);
                     _doc_topic_distribution[m][k] = p_doc_z;
                 }
             }
@@ -248,6 +275,7 @@ namespace LDA{
             for (auto const& doc : docs){
                 for (auto const& word : doc){
                     vocabulary.insert(word);
+                    ++_N;
                 }
             }
 
@@ -328,11 +356,37 @@ namespace LDA{
             _words_num_of_topics[topic] += 1;
             _docs_z[m][topic] += 1;
             _docs_v_num[m] += 1;
+            _Z[m][t] = topic;
         }
 
         double _p_w(uint64_t m, uint64_t t)
         {
+            uint64_t const word(_docs[m][t]);
 
+            double p = 0.0;
+
+            for(uint64_t idx = 0; idx < _K; ++idx){
+                double p_d_z = _doc_topic_distribution[m][idx];
+                double p_w_t = _topic_word_distribution[idx][word];
+                p += (p_d_z * p_w_t);
+            }
+
+            return p;
+        }
+
+        double _perplexity()
+        {
+            double sum = 0.0;
+            for (uint64_t m = 0; m < _docs.size(); ++m){
+                for (uint64_t t = 0; t < _docs[m].size(); ++t){
+                    double p = _p_w(m, t);
+                    sum += log2(p);
+                }
+            }
+
+            double h = -sum / _N;
+            double perplexity = exp(h);
+            return perplexity;
         }
 
         uint64_t _multinomial(std::vector<double> const& p){
