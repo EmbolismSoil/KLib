@@ -13,10 +13,11 @@ target_link_libraries(test_tostr boost_system)
 add_executable(test_rate_limit test_rate_limit.cpp)
 target_link_libraries(test_rate_limit boost_system boost_thread)
 
-add_executable(test_lda test_lda.cpp ../algorithm/LDA.pb.cc)
-target_link_libraries(test_lda protobuf)
+#add_executable(test_lda test_lda.cpp ../algorithm/LDA.pb.cc)
+#target_link_libraries(test_lda protobuf)
 
-add_executable(test_load_lda test_load_lda.cpp ../algorithm/LDA.pb.cc)
-target_link_libraries(test_load_lda protobuf)
-#add_executable(test_timer_queue test_timer_queue.cpp)
-#target_link_libraries(test_timer_queue boost_system boost_thread)
+#add_executable(test_load_lda test_load_lda.cpp ../algorithm/LDA.pb.cc)
+#target_link_libraries(test_load_lda protobuf)
+
+add_executable(test_timer_queue test_timer_queue.cpp)
+target_link_libraries(test_timer_queue boost_system boost_thread boost_chrono)
