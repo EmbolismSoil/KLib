@@ -3,6 +3,7 @@
 #include <boost/chrono.hpp>
 #include <boost/chrono/chrono_io.hpp>
 #include <boost/chrono.hpp>
+#include <unistd.h>
 
 static void handler(void)
 {
@@ -15,7 +16,9 @@ int main(void)
 {
     KLib::TimerTaskQueue timer_queue;
     timer_queue.runEvery(handler, KLib::TimerTaskQueue::timer_type::Seconds(4));
-    timer_queue.exec();
+    boost::thread t([&timer_queue](){timer_queue.exec();});
     
+    ::sleep(21);
+    timer_queue.exit();
     return 0;
 }

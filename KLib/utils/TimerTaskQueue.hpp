@@ -148,7 +148,7 @@ namespace KLib
 
         void exit()
         {
-            _run.store(false, boost::memory_order_release);
+            _run.store(false);
             _wakeUp();
         }
         

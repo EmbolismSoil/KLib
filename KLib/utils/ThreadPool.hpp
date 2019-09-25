@@ -1,6 +1,7 @@
 #ifndef __THREADPOOL_HPP__
 #define __THREADPOOL_HPP__
 
+#include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 #include <list>
 #include <vector>
@@ -11,7 +12,8 @@ class ThreadPool
 {
 public:
     ThreadPool(int threadNum):
-        _threadNum(threadNum)
+        _threadNum(threadNum),
+        _done(false)
     {
         if (_threadNum <= 0)
         {
@@ -43,6 +45,7 @@ public:
     {
         for (std::vector<boost::shared_ptr<boost::thread> >::const_iterator pos = _threads.begin(); pos != _threads.end(); ++pos)
         {
+            _done = true;
             (*pos)->join();
         }
     }
@@ -50,7 +53,7 @@ public:
 private:
     void _run()
     {
-        for (;;){
+        while (!_done){
             boost::function<void(void)> task;
             boost::unique_lock<boost::mutex> lk(_mtx);
             _cond.wait(lk, boost::bind(&ThreadPool::_hasTask, this));
@@ -68,6 +71,7 @@ private:
     }
 
     int  _threadNum;
+    boost::atomic<bool> _done;
     std::list<boost::function<void(void)> > _tasks;
     std::vector<boost::shared_ptr<boost::thread> > _threads;
     boost::mutex _mtx;
