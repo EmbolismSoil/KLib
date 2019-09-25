@@ -43,9 +43,10 @@ public:
 
     virtual ~ThreadPool()
     {
+        _done = true;
+        _cond.notify_all();
         for (std::vector<boost::shared_ptr<boost::thread> >::const_iterator pos = _threads.begin(); pos != _threads.end(); ++pos)
         {
-            _done = true;
             (*pos)->join();
         }
     }
@@ -53,10 +54,14 @@ public:
 private:
     void _run()
     {
-        while (!_done){
+        for (;;){
             boost::function<void(void)> task;
             boost::unique_lock<boost::mutex> lk(_mtx);
             _cond.wait(lk, boost::bind(&ThreadPool::_hasTask, this));
+            if (_done){
+                break; //退出
+            }
+
             task = _tasks.back();
             _tasks.pop_back();
             lk.unlock();
@@ -67,7 +72,7 @@ private:
 
     bool _hasTask()
     {
-        return !_tasks.empty();
+        return !_tasks.empty() || _done;
     }
 
     int  _threadNum;

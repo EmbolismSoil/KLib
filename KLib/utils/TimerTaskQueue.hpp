@@ -109,7 +109,7 @@ namespace KLib
 
         void exec()
         {
-            while(_run.load(boost::memory_order_acquire))
+            while(_run.load())
             {
                 int ret = ::poll(&*_fds.begin(), _fds.size(), _timeout);
                 if (ret < 0)
